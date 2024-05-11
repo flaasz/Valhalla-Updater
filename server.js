@@ -1,37 +1,21 @@
-const fs = require('fs');
-const archivizer = require('./modules/archivizer');
-const comparator = require('./modules/comparator');
-const merger = require('./modules/merger');
-const extras = require('./modules/extras');
+const updater = require("./modules/updater");
+const curseforge = require("./modules/curseforge");
+const pterodactyl = require("./modules/pterodactyl");
+const downloader = require("./modules/downloader");
+require('dotenv').config();
 
+//updater.update();
 
-
-//compare old and new updates
-async function begin() {
-
-    await fs.rmSync("./compare", { //cleanup first 
-        recursive: true,
-        force: true
-    });
-
-    await fs.readdirSync("./current").forEach(file => {
-        archivizer.decompress(`./current/${file}`, `./compare/old`);
-    });
-
-    await extras.checkMods("./compare/old");
-
-    await fs.readdirSync("./downloads").forEach(file => {
-        archivizer.decompress(`./downloads/${file}`, `./compare/new`);
-    });
-
-    await extras.checkMods("./compare/new");
-
-
-    let changeList = await comparator.compare("./compare/old", "./compare/new");
-
-    await merger.merge(changeList);
-
-    await archivizer.compressDirectory("./temp", "./out/test.zip");
+async function abc() {
+    //let packData = await curseforge.checkIfUpdate(936875,5113396);
+    //console.log(packData);
+    //let compress = await pterodactyl.compressFile("49f7c927", ["defaultconfigs", "config", "eula.txt"]);
+    //console.log(compress);
+    let downloadLink = await pterodactyl.getUploadLink("49f7c927");
+    //console.log(downloadLink);
+    downloader.upload("./downloads/cte2.tar.gz", downloadLink);
+    //downloader.download("https://edge.forgecdn.net/files/5113/792/Craft%20to%20Exile%202%20SERVER-0.5.2b.zip", "./downloads/cte2.tar.gz");
+    //let status = await pterodactyl.getStatus("49f7c927");
+    //console.log(status);
 }
-
-begin();
+abc();

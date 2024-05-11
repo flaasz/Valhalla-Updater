@@ -47,7 +47,7 @@ module.exports = {
             const bar = new ProgressBar(`Extracting ${zipFilePath.split("/").at(-1)} [:bar] :rate/bps :percent :etas`, {
                 complete: '=',
                 incomplete: ' ',
-                width: 20,
+                width: 40,
                 total: totalSize
             });
 
@@ -78,7 +78,7 @@ module.exports = {
             const bar = new ProgressBar(`Compressing ${filesToCompress.split("/").at(-1)} [:bar] :rate/bps :percent :etas`, {
                 complete: '=',
                 incomplete: ' ',
-                width: 20,
+                width: 40,
                 total: totalSize
             });
 
@@ -99,7 +99,7 @@ module.exports = {
         const bar = new ProgressBar(`Compressing ${directoryPath.split("/").at(-1)} [:bar] :rate/bps :percent :etas`, {
             complete: '=',
             incomplete: ' ',
-            width: 20,
+            width: 40,
             total: totalSize
         });
 
