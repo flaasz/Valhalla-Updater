@@ -94,7 +94,7 @@ module.exports = {
     compressDirectory: function (directoryPath, outputPath) {
         const totalSize = calculateTotalSize(directoryPath);
 
-        console.log(totalSize);
+        //console.log(totalSize);
         // Initialize progress bar
         const bar = new ProgressBar(`Compressing ${directoryPath.split("/").at(-1)} [:bar] :rate/bps :percent :etas`, {
             complete: '=',
