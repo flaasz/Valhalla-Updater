@@ -32,6 +32,18 @@ module.exports = {
         }
     },
 
+    getServerFileId: async function (modPackId, versionId) {
+        try {
+            let response = await axios.get(`https://api.curseforge.com/v1/mods/${modPackId}/files/${versionId}`, {
+                headers: header
+            });
+            //console.log(response);
+            return response.data.data.serverPackFileId;
+        } catch (error) {
+            console.error(error);
+        }
+    },
+
     getLatestVersionId: async function (modPackId) {
         let data = await this.getPackData(modPackId);
 
@@ -41,7 +53,7 @@ module.exports = {
     getLatestServerPackId: async function (modPackId) {
         let data = await this.getPackData(modPackId);
 
-        return data.latestFiles[0].getServerFileId;
+        return data.latestFiles[0].serverPackFileId;
     },
 
     checkIfUpdate: async function (modPackId, currentVersion) {

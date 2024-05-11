@@ -10,6 +10,9 @@ const progress = require('progress');
 module.exports = {
     download: async function (fileUrl, destinationPath) {
         const fileName = path.basename(destinationPath);
+        if (!fs.existsSync(path.dirname(destinationPath))){
+            fs.mkdirSync(path.dirname(destinationPath), { recursive: true });
+        }
         const writer = fs.createWriteStream(destinationPath);
         const {
             data,

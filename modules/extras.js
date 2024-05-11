@@ -8,5 +8,9 @@ module.exports = {
           console.log("Mods folder not found! Removing parent folder...");
           await copy.removeParentFolder(`${path}/${folderContents[0]}`);
         }
+    },
+
+    sleep: function (ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 };
