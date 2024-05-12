@@ -2,6 +2,7 @@ const updater = require("./modules/updater");
 const curseforge = require("./modules/curseforge");
 const pterodactyl = require("./modules/pterodactyl");
 const downloader = require("./modules/downloader");
+const manifest = require("./modules/manifest");
 require('dotenv').config();
 
 const pack = {
@@ -12,7 +13,7 @@ const pack = {
 };
 
 
-updater.update(pack);
+//updater.update(pack);
 
 async function abc() {
 
@@ -26,5 +27,8 @@ async function abc() {
     //downloader.download("https://edge.forgecdn.net/files/5113/792/Craft%20to%20Exile%202%20SERVER-0.5.2b.zip", "./downloads/cte2.tar.gz");
     //let status = await pterodactyl.getStatus("49f7c927");
     //console.log(status);
+
+    let manif = await manifest.generate("./compare/new/");
+    console.log(manif);
 }
 abc();

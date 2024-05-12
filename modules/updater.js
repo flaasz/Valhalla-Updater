@@ -2,9 +2,9 @@ const fs = require('fs');
 const { decompress } = require('./compressor');
 const comparator = require('./comparator');
 const merger = require('./merger');
-const extras = require('./extras');
+const { sleep, checkMods } = require('./extras');
 const curseforge = require('./curseforge');
-const downloader = require('./downloader');
+const { download } = require('./downloader');
 const pterodactyl = require('./pterodactyl');
 const { unpack } = require('./unpacker');
 
@@ -28,15 +28,15 @@ module.exports = {
             await fs.rmSync(`./${pack.shortName}`, { recursive: true, force: true });
         }
 
-        await downloader.download(newestServerpackURL, `./${pack.shortName}/downloads/new/${pack.shortName}_${newestServerPackID}.tar.gz`);
-        await downloader.download(currentServerPackURL, `./${pack.shortName}/downloads/old/${pack.shortName}_${currentServerPackID}.tar.gz`);
+        await download(newestServerpackURL, `./${pack.shortName}/downloads/new/${pack.shortName}_${newestServerPackID}.tar.gz`);
+        await download(currentServerPackURL, `./${pack.shortName}/downloads/old/${pack.shortName}_${currentServerPackID}.tar.gz`);
 
 
         await decompress(`./${pack.shortName}/downloads/new/${pack.shortName}_${newestServerPackID}.tar.gz`, `./${pack.shortName}/compare/new`);
-        await extras.checkMods(`./${pack.shortName}/compare/new`);
+        await checkMods(`./${pack.shortName}/compare/new`);
     
         await decompress(`./${pack.shortName}/downloads/old/${pack.shortName}_${currentServerPackID}.tar.gz`, `./${pack.shortName}/compare/old`);
-        await extras.checkMods(`./${pack.shortName}/compare/old`);
+        await checkMods(`./${pack.shortName}/compare/old`);
 
         let toCompressList = [];
 
@@ -48,14 +48,14 @@ module.exports = {
 
         let compress = await pterodactyl.compressFile(pack.serverID, toCompressList);
 
-        //await extras.sleep(30000);
+        //await sleep(30000);
 
         let downloadLink = await pterodactyl.getDownloadLink(pack.serverID, compress);
 
         //change this location to ./vault/packname/blabla for safekeeping
-        await downloader.download(downloadLink, `./${pack.shortName}/downloads/main/${pack.shortName}_main_${pack.currentVersion}.tar.gz`);
+        await download(downloadLink, `./${pack.shortName}/downloads/main/${pack.shortName}_main_${pack.currentVersion}.tar.gz`);
 
-        await extras.sleep(1000);
+        await sleep(1000);
         await pterodactyl.deleteFile(pack.serverID, [compress]);
 
         await unpack(`./${pack.shortName}/downloads/main/${pack.shortName}_main_${pack.currentVersion}.tar.gz`, `./${pack.shortName}/compare/main`);
