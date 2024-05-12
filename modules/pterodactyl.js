@@ -1,4 +1,5 @@
 const axios = require('axios');
+const progress = require('progress');
 require('dotenv').config();
 
 
@@ -14,7 +15,7 @@ const header = {
 module.exports = {
     getStatus: async function (serverID) {
         try {
-            let response = await axios.get(`${pterodactylHostName}api/client/servers/S${serverID}/resources`, {
+            let response = await axios.get(`${pterodactylHostName}api/client/servers/${serverID}/resources`, {
                 headers: header
             });
             //console.log(response);
@@ -108,6 +109,38 @@ module.exports = {
         } catch (error) {
             console.error(error);
         }
+    },
+
+    shutdown: async function (serverID) {
+
+        const progressBar = new progress(`Shutting down the server [:bar] :percent :etas`, {
+            width: 40,
+            complete: '=',
+            incomplete: ' ',
+            renderThrottle: 1,
+            total: 30
+        });
+
+        let iterator = 0;
+        this.sendPowerAction(serverID, "stop");
+        let shutdownSequence = setInterval(async () => {
+            let status = await this.getStatus(serverID);
+            //console.log(status);
+            if (status.attributes.current_state === "offline") {
+                progressBar.update(1);
+                clearInterval(shutdownSequence);
+            } else {
+                progressBar.tick(1);
+                iterator++;
+            }
+            if (iterator === progressBar.total) {
+                this.sendPowerAction(serverID, "kill");
+                progressBar.update(1);
+                console.log("This took longer than expected. Killing the server...");
+                clearInterval(shutdownSequence);
+            }
+        }, 1000);
+
     }
 
 };

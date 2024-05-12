@@ -44,7 +44,7 @@ module.exports = {
             toCompressList.push(file);
         });
 
-        //HERE MAKE SURE SERVER IS OFF!!!
+        await pterodactyl.shutdown(pack.serverID);
 
         let compress = await pterodactyl.compressFile(pack.serverID, toCompressList);
 

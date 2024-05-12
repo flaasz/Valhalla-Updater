@@ -19,7 +19,7 @@ async function abc() {
 
     //let packData = await curseforge.getLatestServerPackId(pack.id);
     //console.log(packData);
-    //let compress = await pterodactyl.compressFile("49f7c927", ["defaultconfigs", "config", "eula.txt"]);
+    let compress = await pterodactyl.shutdown("e9352d49");
     //console.log(compress);
     //let downloadLink = await pterodactyl.getUploadLink("49f7c927");
     //console.log(downloadLink);
@@ -28,7 +28,7 @@ async function abc() {
     //let status = await pterodactyl.getStatus("49f7c927");
     //console.log(status);
 
-    let manif = await manifest.generate("./compare/new/");
-    console.log(manif);
+    //let manif = await manifest.generate("./compare/new/");
+    //console.log(manif);
 }
 abc();
