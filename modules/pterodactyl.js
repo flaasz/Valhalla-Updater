@@ -1,6 +1,4 @@
 const axios = require('axios');
-const { compressFile } = require('./archivizer');
-const { rename } = require('fs-extra');
 require('dotenv').config();
 
 
@@ -13,11 +11,10 @@ const header = {
 };
 
 
-
 module.exports = {
     getStatus: async function (serverID) {
         try {
-            let response = await axios.get(`${pterodactylHostName}api/client/servers/${serverID}/resources`, {
+            let response = await axios.get(`${pterodactylHostName}api/client/servers/S${serverID}/resources`, {
                 headers: header
             });
             //console.log(response);
@@ -70,6 +67,21 @@ module.exports = {
     compressFile: async function (serverID, fileList) {
         try {
             let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/files/compress`, {
+                root: "/",
+                files: fileList,
+            }, {
+                headers: header
+            });
+            //console.log(response);
+            return response.data.attributes.name;
+        } catch (error) {
+            console.error(error);
+        }
+    },
+
+    deleteFile: async function (serverID, fileList) {
+        try {
+            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/files/delete`, {
                 root: "/",
                 files: fileList,
             }, {

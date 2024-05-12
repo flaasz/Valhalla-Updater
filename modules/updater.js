@@ -1,11 +1,12 @@
 const fs = require('fs');
-const archivizer = require('./archivizer');
+const { decompress } = require('./compressor');
 const comparator = require('./comparator');
 const merger = require('./merger');
 const extras = require('./extras');
 const curseforge = require('./curseforge');
 const downloader = require('./downloader');
 const pterodactyl = require('./pterodactyl');
+const { unpack } = require('./unpacker');
 
 let pack = {
     "id": 936875,
@@ -17,7 +18,7 @@ let pack = {
 module.exports = {
     update: async function (pack) {
 
-        /*let newestServerPackID = await curseforge.getLatestServerPackId(pack.id);
+        let newestServerPackID = await curseforge.getLatestServerPackId(pack.id);
         let currentServerPackID = await curseforge.getServerFileId(pack.id, pack.currentVersion);
 
         let newestServerpackURL = await curseforge.getServerFileLink(pack.id, newestServerPackID);
@@ -31,47 +32,42 @@ module.exports = {
         await downloader.download(currentServerPackURL, `./${pack.shortName}/downloads/old/${pack.shortName}_${currentServerPackID}.tar.gz`);
 
 
-        await fs.readdirSync(`./${pack.shortName}/downloads/new`).forEach(file => {
-            archivizer.decompress(`./${pack.shortName}/downloads/new/${file}`, `./${pack.shortName}/compare/new`);
-        });
-    
+        await decompress(`./${pack.shortName}/downloads/new/${pack.shortName}_${newestServerPackID}.tar.gz`, `./${pack.shortName}/compare/new`);
         await extras.checkMods(`./${pack.shortName}/compare/new`);
     
-        await fs.readdirSync(`./${pack.shortName}/downloads/old`).forEach(file => {
-            archivizer.decompress(`./${pack.shortName}/downloads/old/${file}`, `./${pack.shortName}/compare/old`);
-        });
-    
-        await extras.checkMods(`./${pack.shortName}/compare/old`);*/
+        await decompress(`./${pack.shortName}/downloads/old/${pack.shortName}_${currentServerPackID}.tar.gz`, `./${pack.shortName}/compare/old`);
+        await extras.checkMods(`./${pack.shortName}/compare/old`);
 
         let toCompressList = [];
 
-        /*await fs.readdirSync(`./${pack.shortName}/compare/old`).forEach(file => {
+        await fs.readdirSync(`./${pack.shortName}/compare/old`).forEach(file => {
             toCompressList.push(file);
         });
 
+        //HERE MAKE SURE SERVER IS OFF!!!
+
         let compress = await pterodactyl.compressFile(pack.serverID, toCompressList);
 
-        await extras.sleep(30000);
+        //await extras.sleep(30000);
 
-        let downloadLink = await pterodactyl.getDownloadLink(pack.serverID, compress.attributes.name);
+        let downloadLink = await pterodactyl.getDownloadLink(pack.serverID, compress);
 
-        await downloader.download(downloadLink, `./${pack.shortName}/downloads/main/${pack.shortName}_main_${pack.currentVersion}.zip`);*/
+        //change this location to ./vault/packname/blabla for safekeeping
+        await downloader.download(downloadLink, `./${pack.shortName}/downloads/main/${pack.shortName}_main_${pack.currentVersion}.tar.gz`);
+
+        await extras.sleep(1000);
+        await pterodactyl.deleteFile(pack.serverID, [compress]);
+
+        await unpack(`./${pack.shortName}/downloads/main/${pack.shortName}_main_${pack.currentVersion}.tar.gz`, `./${pack.shortName}/compare/main`);
 
 
-        await fs.readdirSync(`./${pack.shortName}/downloads/main`).forEach(file => {
-            archivizer.decompress(`./${pack.shortName}/downloads/main/${file}`, `./${pack.shortName}/compare/main`);
-        });
+        let customChanges = await comparator.findCustomChanges(`./${pack.shortName}/compare/main`, `./${pack.shortName}/compare/old`);
+        let changeList = await comparator.compare(`./${pack.shortName}/compare/old`, `./${pack.shortName}/compare/new`);
 
-
-
-
-        //let customChanges = await comparator.findCustomChanges("./temp", "./compare/old");
-        //let changeList = await comparator.compare("./compare/old", "./compare/new");
-
-    
-        //console.log(customChanges);
+        console.log(changeList);
+        console.log(customChanges);
         //await merger.merge(changeList);
 
-        //await archivizer.compressDirectory("./temp", "./out/test.zip");
+        //await compressDirectory("./temp", "./out/test.zip");
     }
 };
