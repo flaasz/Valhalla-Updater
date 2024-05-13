@@ -63,7 +63,7 @@ module.exports = {
         } catch (error) {
             console.error(error);
         }
-    }, 
+    },
 
     compressFile: async function (serverID, fileList) {
         try {
@@ -113,12 +113,15 @@ module.exports = {
 
     shutdown: async function (serverID) {
 
+        let timeToKill = 30; // seconds
+        let interval = 2; // seconds per api call
+
         const progressBar = new progress(`Shutting down the server [:bar] :percent :etas`, {
             width: 40,
             complete: '=',
             incomplete: ' ',
-            renderThrottle: 1,
-            total: 30
+            renderThrottle: 100,
+            total: timeToKill * interval
         });
 
         let iterator = 0;
@@ -131,15 +134,15 @@ module.exports = {
                 clearInterval(shutdownSequence);
             } else {
                 progressBar.tick(1);
-                iterator++;
+                iterator+=interval;
             }
-            if (iterator === progressBar.total) {
+            if (iterator >= timeToKill * interval) {
                 this.sendPowerAction(serverID, "kill");
                 progressBar.update(1);
                 console.log("This took longer than expected. Killing the server...");
                 clearInterval(shutdownSequence);
             }
-        }, 1000);
+        }, interval * 1000);
 
     }
 

@@ -11,7 +11,7 @@ module.exports = {
             width: 40,
             complete: '=',
             incomplete: ' ',
-            renderThrottle: 1,
+            renderThrottle: 100,
             total: fileSize
         });
         return Promise.all([
