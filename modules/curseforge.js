@@ -38,6 +38,7 @@ module.exports = {
                 headers: header
             });
             //console.log(response);
+            if (!response.data.data.serverPackFileId) return versionId;
             return response.data.data.serverPackFileId;
         } catch (error) {
             console.error(error);
@@ -53,6 +54,7 @@ module.exports = {
     getLatestServerPackId: async function (modPackId) {
         let data = await this.getPackData(modPackId);
 
+        if (data.latestFiles[0].serverPackFileId) return data.latestFiles[0].id;
         return data.latestFiles[0].serverPackFileId;
     },
 

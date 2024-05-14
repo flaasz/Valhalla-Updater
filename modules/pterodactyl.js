@@ -114,36 +114,42 @@ module.exports = {
     shutdown: async function (serverID) {
 
         let timeToKill = 30; // seconds
-        let interval = 2; // seconds per api call
+        let interval = 3; // seconds per api call
 
         const progressBar = new progress(`Shutting down the server [:bar] :percent :etas`, {
             width: 40,
             complete: '=',
             incomplete: ' ',
             renderThrottle: 100,
-            total: timeToKill * interval
+            total: timeToKill + 1
         });
 
         let iterator = 0;
-        this.sendPowerAction(serverID, "stop");
+        await this.sendPowerAction(serverID, "stop");
         let shutdownSequence = setInterval(async () => {
             let status = await this.getStatus(serverID);
             //console.log(status);
             if (status.attributes.current_state === "offline") {
                 progressBar.update(1);
                 clearInterval(shutdownSequence);
-            } else {
-                progressBar.tick(1);
-                iterator+=interval;
+            } else if (iterator < timeToKill) {
+                progressBar.tick(interval);
+                iterator += interval;
             }
-            if (iterator >= timeToKill * interval) {
-                this.sendPowerAction(serverID, "kill");
-                progressBar.update(1);
-                console.log("This took longer than expected. Killing the server...");
-                clearInterval(shutdownSequence);
+            if (iterator >= timeToKill) {
+                progressBar.update(0.99);
+                console.log("\nThis is taking longer than expected...");
+                process.stdout.moveCursor(76, -2);
+
+                if (status.attributes.resources.cpu_absolute < 10) {
+                    progressBar.update(1);
+                    console.log("\nServer is idling. Killing it...");
+                    await this.sendPowerAction(serverID, "kill");
+                    clearInterval(shutdownSequence);
+                }
+
             }
         }, interval * 1000);
-
     }
 
 };

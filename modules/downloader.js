@@ -61,6 +61,9 @@ module.exports = {
 
         for (let file of list) {
             progressBar.tick(1);
+
+            if (file.clientonly === true) continue;
+
             let destinationPath = path.join(destinationFolder, file.path, file.name);
 
             if (!fs.existsSync(path.dirname(destinationPath))) {

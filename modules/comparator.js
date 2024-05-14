@@ -62,7 +62,78 @@ module.exports = {
         print(res);
         //console.log(changeList);
         return customChanges;
+    },
+
+    findCustomManifestChanges: function(a, b) {
+        let customChanges = {
+            customFiles: [],
+            missingFiles: [],
+            editedFiles: []
+        };
+
+        let changelog = this.compareManifest(a, b);
+
+        changelog.leftOnly.forEach(dif => {
+            console.log(`Custom file: ${dif.path}, name1: ${dif.name}`);
+            customChanges.customFiles.push(dif.path + "\\" + dif.name);
+        });
+
+        changelog.rightOnly.forEach(dif => {
+            console.log(`Missing file: ${dif.path}, name2: ${dif.name}`);
+            customChanges.missingFiles.push(dif.path + "\\" + dif.name);
+        });
+
+        changelog.different.forEach(dif => {
+            console.log(`Custom file - edited: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
+            customChanges.editedFiles.push(dif.left.path + "\\" + dif.left.name);
+        });
+    },
+
+    compareManifest: async function (leftManifest, rightManifest) {
+        let result = {
+            matching: [],
+            leftOnly: [],
+            rightOnly: [],
+            different: []
+        };
+
+        let leftMap = new Map();
+        let rightMap = new Map();
+
+        leftManifest.forEach(item => {
+            const key = `${item.path}:${item.name}`;
+            leftMap.set(key, item);
+        });
+
+        rightManifest.forEach(item => {
+            const key = `${item.path}:${item.name}`;
+            rightMap.set(key, item);
+        });
+
+        leftMap.forEach((leftItem, key) => {
+            if (rightMap.has(key)) {
+                const rightItem = rightMap.get(key);
+                if (leftItem.sha1 === rightItem.sha1 && leftItem.size === rightItem.size) {
+                    result.matching.push(leftItem);
+                } else {
+                    result.different.push({
+                        left: leftItem,
+                        right: rightItem
+                    });
+                }
+                rightMap.delete(key);
+            } else {
+                result.leftOnly.push(leftItem);
+            }
+        });
+
+        rightMap.forEach(rightItem => {
+            result.rightOnly.push(rightItem);
+        });
+
+        return result;
     }
+
 };
 
 function print(result) {

@@ -2,17 +2,19 @@ const fs = require('fs');
 const { decompress } = require('./compressor');
 const comparator = require('./comparator');
 const merger = require('./merger');
-const { sleep, checkMods } = require('./extras');
+const { sleep, checkMods } = require('./functions');
 const curseforge = require('./curseforge');
 const { download } = require('./downloader');
 const pterodactyl = require('./pterodactyl');
 const { unpack } = require('./unpacker');
 
-let pack = {
-    "id": 936875,
-    "shortName": "cte2",
-    "serverID": "49f7c927",
-    "currentVersion": 5113046
+let pack = { // reference 
+    id: 936875,
+    shortName: "cte2",
+    serverID: "49f7c927",
+    currentVersion: 5113046,
+    requiresUpdate: true,
+    platform: "curseforge"
 };
 
 module.exports = {
@@ -69,5 +71,9 @@ module.exports = {
         //await merger.merge(changeList);
 
         //await compressDirectory("./temp", "./out/test.zip");
+    },
+
+    updateFTB: async function (pack) {
+
     }
 };

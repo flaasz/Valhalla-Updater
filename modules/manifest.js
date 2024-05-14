@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const {
     hashFile
-} = require('./hasher');
+} = require('./functions');
 const progress = require('progress');
 
 
