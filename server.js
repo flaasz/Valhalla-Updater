@@ -5,6 +5,9 @@ const downloader = require("./modules/downloader");
 const manifest = require("./modules/manifest");
 const comparator = require("./modules/comparator");
 const functions = require("./modules/functions");
+const mongo = require("./modules/mongo");
+const scheduler = require("./modules/scheduler");
+const modpacksch = require("./modules/modpacksch");
 require('dotenv').config();
 
 const pack = {
@@ -201,11 +204,17 @@ async function abc() {
         "Craft to Exile 2-0.5.2b.zip",
     ];
 
-    versionsList.forEach(version => {
+    /*versionsList.forEach(version => {
         console.log(functions.getVersion(version));
-    });
+    });*/
     
     //console.log(functions.getVersion("SteamPunk_ServerPack_v22HF.zip"));
+
+    scheduler.checkForUpdates();
+
+    //mongo.getServers();
+
+    //console.log(await modpacksch.getLatestFTBVersionId(117));
 
 }
 abc();
