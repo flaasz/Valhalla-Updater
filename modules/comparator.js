@@ -10,6 +10,12 @@ const options = {
 
 
 module.exports = {
+    /**
+     * Compares two directories and returns a list of changes.
+     * @param {string} a Path to the first directory to compare.
+     * @param {string} b Path to the second directory to compare.
+     * @returns Object containing lists of deletions and additions.
+     */
     compare: async function (a, b) {
         const res = await dircompare.compareSync(a, b, options);
 
@@ -37,6 +43,12 @@ module.exports = {
         return changeList;
     },
 
+    /**
+     * Finds the custom changes between two directories.
+     * @param {string} a Path to customised directory.
+     * @param {string} b Path to original directory.
+     * @returns Object containing lists of custom files, missing files, and edited files.
+     */
     findCustomChanges: async function (a, b) {
         const res = await dircompare.compareSync(a, b, options);
 
@@ -64,7 +76,12 @@ module.exports = {
         return customChanges;
     },
 
-    findCustomManifestChanges: function(a, b) {
+    /**
+     * Finds custom changes between two manifest files.
+     * @param {Array} a Manifest with custom changes.
+     * @param {Array} b Manifest with original changes.
+     */
+    findCustomManifestChanges: function (a, b) {
         let customChanges = {
             customFiles: [],
             missingFiles: [],
@@ -89,6 +106,12 @@ module.exports = {
         });
     },
 
+    /**
+     * Compare two manifest files and return the differences.
+     * @param {*} leftManifest First manifest to compare.
+     * @param {*} rightManifest Second manifest to compare.
+     * @returns Object containing lists of matching, left only, right only, and different files.
+     */
     compareManifest: async function (leftManifest, rightManifest) {
         let result = {
             matching: [],
@@ -136,6 +159,10 @@ module.exports = {
 
 };
 
+/**
+ * Parses the result of the comparison and prints it to the console.
+ * @param {Object} result Result of the comparison.
+ */
 function print(result) {
     console.log('Directories are %s', result.same ? 'identical' : 'different');
 

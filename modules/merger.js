@@ -2,20 +2,33 @@ var fs = require('fs');
 
 
 module.exports = {
+    /**
+     * Merges the changes from the changeList to the temp directory.
+     * @param {Object} changeList ChangeList object containing the changes.
+     */
     merge: function (changeList) {
         for (let path of changeList.deletions) {
             if (fs.existsSync(`./temp${path}`)) {
-                fs.rmSync(`./temp${path}`, { recursive: true, force: true });
+                fs.rmSync(`./temp${path}`, {
+                    recursive: true,
+                    force: true
+                });
             }
         }
         console.log("Removed old files");
         for (let path of changeList.additions) {
-            fs.cpSync(`./compare/new${path}`, `./temp${path}`, {recursive: true});
+            fs.cpSync(`./compare/new${path}`, `./temp${path}`, {
+                recursive: true
+            });
             //fs.copyFileSync(`./compare/new${path}`, `./temp${path}`);
         }
         console.log("Added new files");
     },
 
+    /**
+     * Merges the changes from the changeList to the temp directory.
+     * @param {Object} changeList ChangeList object containing the changes.
+     */
     mergeFromManifest: function (dir, changeList, customChanges) {
 
 
@@ -24,12 +37,17 @@ module.exports = {
 
         for (let path of changeList.left) {
             if (fs.existsSync(`${dir}${path}`)) {
-                fs.rmSync(`${dir}${path}`, { recursive: true, force: true });
+                fs.rmSync(`${dir}${path}`, {
+                    recursive: true,
+                    force: true
+                });
             }
         }
         console.log("Removed old files");
         for (let path of changeList.right) {
-            fs.cpSync(`${dir}${path}`, `${dir}${path}`, {recursive: true});
+            fs.cpSync(`${dir}${path}`, `${dir}${path}`, {
+                recursive: true
+            });
         }
         console.log("Added new files");
     }

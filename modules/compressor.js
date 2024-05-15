@@ -2,36 +2,17 @@ const AdmZip = require('adm-zip');
 const ProgressBar = require('progress');
 const fs = require('fs');
 const path = require('path');
-
-
-const zipDirectory = async (sourceDir, outputFilePath) => {
-    const zip = new AdmZip();
-    zip.addLocalFolder(sourceDir);
-    await zip.writeZipPromise(outputFilePath);
-    console.log(`Zip file created: ${outputFilePath}`);
-};
-
-const unzipDirectory = async (inputFilePath, outputDirectory) => {
-    const zip = new AdmZip(inputFilePath);
-    return new Promise((resolve, reject) => {
-        zip.extractAllToAsync(outputDirectory, true, (error) => {
-            if (error) {
-                console.log(error);
-                reject(error);
-            } else {
-                console.log(`Extracted to "${outputDirectory}" successfully`);
-                resolve();
-            }
-        });
-    });
-};
-
-
-//unzipDirectory('./dir1/Craft to Exile 2 SERVER-0.5.2.zip', `./temp`);
+const { calculateTotalSize } = require('./functions');
 
 
 module.exports = {
 
+    /**
+     * Decompresses a zip file to the specified path.
+     * @param {string} zipFilePath Path to the zip file to decompress.
+     * @param {string} extractToPath Path to the extracted files.
+     * @returns
+     */
     decompress: async function (zipFilePath, extractToPath) {
         return new Promise((resolve, reject) => {
             const zip = new AdmZip(zipFilePath);
@@ -64,6 +45,12 @@ module.exports = {
         });
     },
 
+    /**
+     * Compresses a list of files to a zip file.
+     * @param {Array} filesToCompress Array with files to compress.
+     * @param {string} outputPath Path to the output zip file.
+     * @returns
+     */
     compressFile: async function (filesToCompress, outputPath) {
         return new Promise((resolve, reject) => {
             const zip = new AdmZip();
@@ -91,6 +78,12 @@ module.exports = {
         });
     },
 
+    /**
+     * Compresses content of the directory to a zip file.
+     * @param {string} filesToCompress Path to a directory to compress.
+     * @param {string} outputPath Path to the output zip file.
+     * @returns
+     */
     compressDirectory: function (directoryPath, outputPath) {
         const totalSize = calculateTotalSize(directoryPath);
 
@@ -129,18 +122,3 @@ module.exports = {
         zip.writeZip(outputPath);
     }
 };
-
-function calculateTotalSize(dir) {
-    let totalSize = 0;
-    const files = fs.readdirSync(dir);
-    files.forEach(file => {
-        const filePath = path.join(dir, file);
-        const stats = fs.statSync(filePath);
-        if (stats.isDirectory()) {
-            totalSize += calculateTotalSize(filePath); // Recursively calculate size of files in subdirectories
-        } else {
-            totalSize += stats.size;
-        }
-    });
-    return totalSize;
-}

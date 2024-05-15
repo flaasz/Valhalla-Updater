@@ -1,12 +1,18 @@
 const fs = require('fs');
 const path = require('path');
 const {
-    hashFile
+    hashFile,
+    countFiles
 } = require('./functions');
 const progress = require('progress');
 
 
 module.exports = {
+    /**
+     * Generates a manifest of all files in the specified directory and its subdirectories.
+     * @param {string} directory Path to the directory to generate the manifest for.
+     * @returns Array of objects containing the name, path, size, and SHA1 hash of each file.
+     */
     generate: function (directory) {
 
         var manifest = [];
@@ -19,12 +25,19 @@ module.exports = {
             total: countFiles(directory)
         });
 
-        createEntry(directory,directory, progressBar, manifest);
+        createEntry(directory, directory, progressBar, manifest);
 
         return manifest;
     }
 };
 
+/**
+ * Recursively generates a manifest of all files in the specified directory and its subdirectories.
+ * @param {string} directory Path to the directory to generate the manifest for.
+ * @param {string} basePath Base path of the directory.
+ * @param {*} progressBar Progress bar to update.
+ * @param {Array} manifest Array to store the manifest entries.
+ */
 function createEntry(directory, basePath, progressBar, manifest) {
     const files = fs.readdirSync(directory);
 
@@ -50,19 +63,3 @@ function createEntry(directory, basePath, progressBar, manifest) {
     });
 }
 
-function countFiles(dir) {
-    let count = 0;
-
-    const files = fs.readdirSync(dir);
-    files.forEach(file => {
-        const filePath = path.join(dir, file);
-        const stats = fs.statSync(filePath);
-        if (stats.isFile()) {
-            count++;
-        } else if (stats.isDirectory()) {
-            count += countFiles(filePath);
-        }
-    });
-
-    return count;
-}

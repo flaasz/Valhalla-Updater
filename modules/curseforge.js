@@ -8,6 +8,11 @@ const header = {
 };
 
 module.exports = {
+    /**
+     * Gets the data of a modpack.
+     * @param {number} modPackId Id of the modpack on CurseForge.
+     * @returns Object containing the data of the modpack.
+     */
     getPackData: async function (modPackId) {
         try {
             let response = await axios.get(`https://api.curseforge.com/v1/mods/${modPackId}`, {
@@ -20,7 +25,13 @@ module.exports = {
         }
     },
 
-    getServerFileLink: async function (modPackId, versionId) {
+    /**
+     * Gets the download link of a modpack file.
+     * @param {number} modPackId Id of the modpack on CurseForge.
+     * @param {number} versionId Version of the modpack file.
+     * @returns Url to download the modpack file.
+     */
+    getFileLink: async function (modPackId, versionId) {
         try {
             let response = await axios.get(`https://api.curseforge.com/v1/mods/${modPackId}/files/${versionId}`, {
                 headers: header
@@ -32,6 +43,12 @@ module.exports = {
         }
     },
 
+    /**
+     * Gets the fileId of the server pack file.
+     * @param {number} modPackId Id of the modpack on CurseForge.
+     * @param {number} versionId Version of the modpack file.
+     * @returns Id of the server pack file, if it exists. Otherwise, returns the versionId.
+     */
     getServerFileId: async function (modPackId, versionId) {
         try {
             let response = await axios.get(`https://api.curseforge.com/v1/mods/${modPackId}/files/${versionId}`, {
@@ -45,12 +62,22 @@ module.exports = {
         }
     },
 
+    /**
+     * Gets the latest pack version.
+     * @param {number} modPackId Id of the modpack on CurseForge.
+     * @returns Id of the latest version of the modpack.
+     */
     getLatestVersionId: async function (modPackId) {
         let data = await this.getPackData(modPackId);
 
         return data.mainFileId;
     },
 
+    /**
+     * Gets the latest server pack file id.
+     * @param {number} modPackId Id of the modpack on CurseForge.
+     * @returns Id of the latest server pack file.
+     */
     getLatestServerPackId: async function (modPackId) {
         let data = await this.getPackData(modPackId);
 
@@ -58,6 +85,12 @@ module.exports = {
         return data.latestFiles[0].serverPackFileId;
     },
 
+    /**
+     * Checks if the modpack has an update.
+     * @param {number} modPackId Id of the modpack on CurseForge.
+     * @param {number} currentVersion Current version of the modpack.
+     * @returns True if the modpack has an update, false otherwise.
+     */
     checkIfUpdate: async function (modPackId, currentVersion) {
         let data = await this.getLatestVersionId(modPackId);
 

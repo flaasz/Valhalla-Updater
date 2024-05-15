@@ -4,6 +4,7 @@ const pterodactyl = require("./modules/pterodactyl");
 const downloader = require("./modules/downloader");
 const manifest = require("./modules/manifest");
 const comparator = require("./modules/comparator");
+const functions = require("./modules/functions");
 require('dotenv').config();
 
 const pack = {
@@ -168,16 +169,18 @@ let downloadList1 = [
 
 async function abc() {
 
-    //let packData = await curseforge.getLatestServerPackId(pack.id);
-    //console.log(packData);
-    //let compress = await pterodactyl.shutdown("219d9e28");
-    //console.log(compress);
-    //let downloadLink = await pterodactyl.getUploadLink("49f7c927");
-    //console.log(downloadLink);
-    //downloader.upload("./downloads/cte2.tar.gz", downloadLink);
-    //downloader.download("https://edge.forgecdn.net/files/5113/792/Craft%20to%20Exile%202%20SERVER-0.5.2b.zip", "./downloads/cte2.tar.gz");
-    //let status = await pterodactyl.getStatus("49f7c927");
-    //console.log(status);
+    /*let packData = await curseforge.getLatestServerPackId(pack.id);
+    console.log(packData);
+    let compress = await pterodactyl.shutdown("219d9e28");
+    console.log(compress);
+    let downloadLink = await pterodactyl.getUploadLink("49f7c927");
+    console.log(downloadLink);
+    downloader.upload("./downloads/cte2.tar.gz", downloadLink);
+    downloader.download("https://edge.forgecdn.net/files/5113/792/Craft%20to%20Exile%202%20SERVER-0.5.2b.zip", "./downloads/cte2.tar.gz");
+    let status = await pterodactyl.getStatus("49f7c927");
+    console.log(status);
+
+    pterodactyl.shutdown("49f7c927");*/
 
     //let manif = await manifest.generate("./compare/new/");
     //console.log(manif);
@@ -185,7 +188,24 @@ async function abc() {
     //await downloader.downloadList(downloadList, "./downloads/test");
     //pterodactyl.shutdown("49f7c927");
 
-    let comparison = await comparator.compareManifest(downloadList1, downloadList);
-    console.log(comparison.different);
+    //let comparison = await comparator.compareManifest(downloadList1, downloadList);
+
+    const versionsList = [
+        "GT_New_Horizons_2.5.1",
+        "1.8.1",
+        "Enigmatica 2 Expert 1.90h",
+        "Vault Hunters 3rd Edition-3.13.zip",
+        "All the Mods 9-0.2.58",
+        "Sky Bees 2 1.4.1 Serverfiles.zip",
+        "SteamPunk_ServerPack_v22HF.zip",
+        "Craft to Exile 2-0.5.2b.zip",
+    ];
+
+    versionsList.forEach(version => {
+        console.log(functions.getVersion(version));
+    });
+    
+    //console.log(functions.getVersion("SteamPunk_ServerPack_v22HF.zip"));
+
 }
 abc();

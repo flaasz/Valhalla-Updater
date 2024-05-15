@@ -14,7 +14,8 @@ let pack = { // reference
     serverID: "49f7c927",
     currentVersion: 5113046,
     requiresUpdate: true,
-    platform: "curseforge"
+    platform: "curseforge",
+    newestVersion: 5113046,
 };
 
 module.exports = {

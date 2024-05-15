@@ -8,6 +8,11 @@ const progress = require('progress');
 // Promisify pipeline for better error handling
 
 module.exports = {
+    /**
+     * Downloads a file from the specified URL to the destination path.
+     * @param {string} fileUrl URL of the file to be downloaded.
+     * @param {string} destinationPath Path to save the downloaded file.
+     */
     download: async function (fileUrl, destinationPath) {
         const fileName = path.basename(destinationPath);
         if (!fs.existsSync(path.dirname(destinationPath))) {
@@ -48,6 +53,11 @@ module.exports = {
         console.log(`${fileName} downloaded successfully.`);
     },
 
+    /**
+     * Downloads a list of files to the specified destination folder.
+     * @param {Array} list Array containing the objects of files to be downloaded.
+     * @param {string} destinationFolder Path to save the downloaded files.
+     */
     downloadList: async function (list, destinationFolder) {
 
         const progressBar = new progress(`Downloading list [:bar] :rate/bps :percent :etas`, {
@@ -97,6 +107,11 @@ module.exports = {
         console.log(`List downloaded successfully.`);
     },
 
+    /**
+     * Uploads a file to the specified URL.
+     * @param {string} file Path to the file to upload.
+     * @param {string} uploadUrl URL to upload to.
+     */
     upload: async function (file, uploadUrl) {
         const fileName = path.basename(file);
         const fileSize = fs.statSync(file).size;
