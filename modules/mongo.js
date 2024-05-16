@@ -26,7 +26,7 @@ module.exports = {
     /**
      * Update the data of a server in MongoDB.
      * @param {number} modpackId ID of the modpack on CF/FTB.
-     * @param {Object} update Object containing the fields to update.
+     * @param {object} update Object containing the fields to update.
      */
     updateServer: async function (modpackId, update) {
         await mongoClient.connect();

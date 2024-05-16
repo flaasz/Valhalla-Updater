@@ -27,7 +27,9 @@ module.exports = {
 
     /**
      * Merges the changes from the changeList to the temp directory.
-     * @param {Object} changeList ChangeList object containing the changes.
+     * @param {string} dir The directory to merge the changes to.
+     * @param {object} changeList Object containing the changes.
+     * @param {object} customChanges Object containing the custom changes.
      */
     mergeFromManifest: function (dir, changeList, customChanges) {
 

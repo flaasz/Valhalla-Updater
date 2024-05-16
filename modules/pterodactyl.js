@@ -91,13 +91,36 @@ module.exports = {
      * Sends a request to compress a list of files on the server.
      * @param {string} serverID Id of the server on Pterodactyl.
      * @param {Array} fileList List of files to compress.
+     * @param {string} listPath Path to the folder containing the files to compress. Defaults to the root directory.
      * @returns 
      */
-    compressFile: async function (serverID, fileList) {
+    compressFile: async function (serverID, fileList, listPath = "/",) {
         try {
             let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/files/compress`, {
-                root: "/",
+                root: listPath,
                 files: fileList,
+            }, {
+                headers: header
+            });
+            //console.log(response);
+            return response.data.attributes.name;
+        } catch (error) {
+            console.error(error);
+        }
+    },
+
+    /**
+     * Sends a request to decompress a file on the server.
+     * @param {string} serverID Id of the server on Pterodactyl.
+     * @param {string} fileName Name of the file to decompress.
+     * @param {string} filePath Path to the folder containing the file to decompress. Defaults to the root directory.
+     * @returns 
+     */
+    decompressFile: async function (serverID, fileName, filePath = "/") {
+        try {
+            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/files/decompress`, {
+                root: filePath,
+                file: fileName,
             }, {
                 headers: header
             });
@@ -112,12 +135,13 @@ module.exports = {
      * Sends a request to delete a list of files on the server.
      * @param {string} serverID Id of the server on Pterodactyl.
      * @param {Array} fileList List of files to delete.
+     * @param {string} listPath Path to the folder containing the files to delete. Defaults to the root directory.
      * @returns 
      */
-    deleteFile: async function (serverID, fileList) {
+    deleteFile: async function (serverID, fileList, filePath = "/") {
         try {
             let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/files/delete`, {
-                root: "/",
+                root: filePath,
                 files: fileList,
             }, {
                 headers: header
@@ -134,12 +158,13 @@ module.exports = {
      * @param {string} serverID Id of the server on Pterodactyl.
      * @param {string} path Path to the file to rename on the server.
      * @param {string} newName New name of the file.
+     * @param {string} filePath Path to the file to rename. Defaults to the root directory.
      * @returns 
      */
-    renameFile: async function (serverID, path, newName) {
+    renameFile: async function (serverID, path, newName, filePath = "/") {
         try {
             let response = await axios.put(`${pterodactylHostName}api/client/servers/${serverID}/files/rename`, {
-                root: "/",
+                root: filePath,
                 files: path,
                 name: newName
             }, {
@@ -153,10 +178,29 @@ module.exports = {
     },
 
     /**
+     * Executes a command on the server.
+     * @param {string} serverID Id of the server on Pterodactyl.
+     * @param {string} command Command to be executed on the server.
+     */
+    sendCommand: async function (serverID, command) {
+        try {
+            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/command`, {
+                command: command,
+            }, {
+                headers: header
+            });
+            //console.log(response);
+            return response.data;
+        } catch (error) {
+            console.error(error);
+        }
+    },
+
+    /**
      * Begins a shutdown sequence on the server. If the server takes longer than the specified time to shut down, it will wait for it to idle and forcibly kill it.
      * @param {string} serverID Id of the server on Pterodactyl.
-     * @param {number} [timeToKill] Time in seconds to wait before killing the server. Default is 30 seconds.
-     * @param {number} [interval] Interval in seconds to check the server status. Default interval is 3 seconds.
+     * @param {number} timeToKill Time in seconds to wait before killing the server. Default is 30 seconds.
+     * @param {number} interval Interval in seconds to check the server status. Default interval is 3 seconds.
      */
     shutdown: async function (serverID, timeToKill = 30, interval = 3) {
 

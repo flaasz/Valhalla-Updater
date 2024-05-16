@@ -12,12 +12,12 @@ const options = {
 module.exports = {
     /**
      * Compares two directories and returns a list of changes.
-     * @param {string} a Path to the first directory to compare.
-     * @param {string} b Path to the second directory to compare.
+     * @param {string} firstDir Path to the first directory to compare.
+     * @param {string} secondDir Path to the second directory to compare.
      * @returns Object containing lists of deletions and additions.
      */
-    compare: async function (a, b) {
-        const res = await dircompare.compareSync(a, b, options);
+    compare: async function (firstDir, secondDir) {
+        const res = await dircompare.compareSync(firstDir, secondDir, options);
 
         let changeList = {
             deletions: [],
@@ -45,12 +45,12 @@ module.exports = {
 
     /**
      * Finds the custom changes between two directories.
-     * @param {string} a Path to customised directory.
-     * @param {string} b Path to original directory.
+     * @param {string} customDir Path to customised directory.
+     * @param {string} originalDir Path to original directory.
      * @returns Object containing lists of custom files, missing files, and edited files.
      */
-    findCustomChanges: async function (a, b) {
-        const res = await dircompare.compareSync(a, b, options);
+    findCustomChanges: async function (customDir, originalDir) {
+        const res = await dircompare.compareSync(customDir, originalDir, options);
 
         let customChanges = {
             customFiles: [],
@@ -78,17 +78,18 @@ module.exports = {
 
     /**
      * Finds custom changes between two manifest files.
-     * @param {Array} a Manifest with custom changes.
-     * @param {Array} b Manifest with original changes.
+     * @param {Array} customManifest Manifest with custom changes.
+     * @param {Array} originalManifest Manifest with original changes.
+     * @returns Object containing lists of custom files, missing files, and edited files.
      */
-    findCustomManifestChanges: function (a, b) {
+    findCustomManifestChanges: function (customManifest, originalManifest) {
         let customChanges = {
             customFiles: [],
             missingFiles: [],
             editedFiles: []
         };
 
-        let changelog = this.compareManifest(a, b);
+        let changelog = this.compareManifest(customManifest, originalManifest);
 
         changelog.leftOnly.forEach(dif => {
             console.log(`Custom file: ${dif.path}, name1: ${dif.name}`);
@@ -104,12 +105,14 @@ module.exports = {
             console.log(`Custom file - edited: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
             customChanges.editedFiles.push(dif.left.path + "\\" + dif.left.name);
         });
+
+        return customChanges;
     },
 
     /**
      * Compare two manifest files and return the differences.
-     * @param {*} leftManifest First manifest to compare.
-     * @param {*} rightManifest Second manifest to compare.
+     * @param {Array} leftManifest First manifest to compare.
+     * @param {Array} rightManifest Second manifest to compare.
      * @returns Object containing lists of matching, left only, right only, and different files.
      */
     compareManifest: async function (leftManifest, rightManifest) {
@@ -161,7 +164,7 @@ module.exports = {
 
 /**
  * Parses the result of the comparison and prints it to the console.
- * @param {Object} result Result of the comparison.
+ * @param {object} result Result of the comparison.
  */
 function print(result) {
     console.log('Directories are %s', result.same ? 'identical' : 'different');
