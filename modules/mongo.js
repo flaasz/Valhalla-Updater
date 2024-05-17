@@ -2,10 +2,11 @@ const {
     MongoClient
 } = require('mongodb');
 require('dotenv').config();
+const { mongoDBName, mongoDBserversCollection } = require("../config/config.json");
 
 const mongoClient = new MongoClient(process.env.MONGODB_URL);
 
-const db = mongoClient.db(process.env.MONGODB_DBNAME);
+const db = mongoClient.db(mongoDBName);
 
 module.exports = {
 
@@ -15,7 +16,7 @@ module.exports = {
      */
     getServers: async function () {
         await mongoClient.connect();
-        const serversCollection = db.collection('servers');
+        const serversCollection = db.collection(mongoDBserversCollection);
         const serversArray = await serversCollection.find({}).toArray();
 
         //console.log(serversArray);
@@ -30,7 +31,7 @@ module.exports = {
      */
     updateServer: async function (modpackId, update) {
         await mongoClient.connect();
-        const serversCollection = db.collection('servers');
+        const serversCollection = db.collection(mongoDBserversCollection);
 
         await serversCollection.updateMany({
             modpackID: modpackId

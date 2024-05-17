@@ -4,7 +4,10 @@ require('dotenv').config();
 
 
 const pterodactylAPIKey = process.env.PTERODACTYL_APIKEY;
-const pterodactylHostName = process.env.PTERODACTYL_HOSTNAME;
+const {
+    pterodactylHostName
+} = require("../config/config.json");
+
 const header = {
     "Accept": "application/json",
     "Content-Type": "application/json",
@@ -94,7 +97,7 @@ module.exports = {
      * @param {string} listPath Path to the folder containing the files to compress. Defaults to the root directory.
      * @returns 
      */
-    compressFile: async function (serverID, fileList, listPath = "/",) {
+    compressFile: async function (serverID, fileList, listPath = "/", ) {
         try {
             let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/files/compress`, {
                 root: listPath,
@@ -192,7 +195,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.log(error.response.status);
         }
     },
 

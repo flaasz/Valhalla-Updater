@@ -77,9 +77,10 @@ module.exports = {
 
                 let servers = await mongo.getServers();
 
-                pterodactyl.sendCommand(server.serverId, `say Cake drop!`);
 
                 for (let server of servers) {
+                    await pterodactyl.sendCommand(server.serverId, `say Cake drop!`);
+
                     for (let i = 0; i < cakeAmount; i++) {
                         await pterodactyl.sendCommand(server.serverId, `give @a minecraft:cake 1`);
                         await functions.sleep(200);
@@ -89,7 +90,7 @@ module.exports = {
             }
         }
 
-        dropCake();
+        //dropCake();
         setInterval(dropCake, interval * 60 * 1000);
     }
 };

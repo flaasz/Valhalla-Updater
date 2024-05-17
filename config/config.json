@@ -1,0 +1,5 @@
+{
+    "pterodactylHostName": "https://panel.valhallamc.io/",
+    "mongoDBName": "valhalla",
+    "mongoDBserversCollection": "servers"
+}

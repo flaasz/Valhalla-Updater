@@ -211,11 +211,11 @@ async function abc() {
     
     //console.log(functions.getVersion("SteamPunk_ServerPack_v22HF.zip"));
 
-    //scheduler.checkForUpdates();
+    scheduler.cakeDrop();
 
     //mongo.getServers();
 
-    discord.launchBot();
+    //discord.launchBot();
 
     //console.log(await modpacksch.getLatestFTBVersionId(117));
 
