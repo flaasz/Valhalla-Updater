@@ -8,6 +8,7 @@ const functions = require("./modules/functions");
 const mongo = require("./modules/mongo");
 const scheduler = require("./modules/scheduler");
 const modpacksch = require("./modules/modpacksch");
+const discord = require("./discord/bot");
 require('dotenv').config();
 
 const pack = {
@@ -210,9 +211,11 @@ async function abc() {
     
     //console.log(functions.getVersion("SteamPunk_ServerPack_v22HF.zip"));
 
-    scheduler.checkForUpdates();
+    //scheduler.checkForUpdates();
 
     //mongo.getServers();
+
+    discord.launchBot();
 
     //console.log(await modpacksch.getLatestFTBVersionId(117));
 
