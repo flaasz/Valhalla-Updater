@@ -4,12 +4,13 @@ var fs = require('fs');
 module.exports = {
     /**
      * Merges the changes from the changeList to the temp directory.
+     * @param {String} dir Work directory to merge changes to.
      * @param {Object} changeList ChangeList object containing the changes.
      */
-    merge: function (changeList) {
+    merge: function (dir, changeList) {
         for (let path of changeList.deletions) {
-            if (fs.existsSync(`./temp${path}`)) {
-                fs.rmSync(`./temp${path}`, {
+            if (fs.existsSync(`${dir}/compare/main${path}`)) {
+                fs.rmSync(`${dir}/compare/main${path}`, {
                     recursive: true,
                     force: true
                 });
@@ -17,7 +18,7 @@ module.exports = {
         }
         console.log("Removed old files");
         for (let path of changeList.additions) {
-            fs.cpSync(`./compare/new${path}`, `./temp${path}`, {
+            fs.cpSync(`${dir}/compare/new${path}`, `${dir}/compare/main${path}`, {
                 recursive: true
             });
             //fs.copyFileSync(`./compare/new${path}`, `./temp${path}`);

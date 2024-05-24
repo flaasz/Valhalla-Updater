@@ -18,6 +18,19 @@ module.exports = {
     },
 
     /**
+     * Recursively deletes the specified directory if it exists.
+     * @param {*} dirPath Path to the directory to delete.
+     */
+    rmRecursive: function (dirPath) {
+        if (fs.existsSync(dirPath)) {
+            fs.rmSync(dirPath, {
+                recursive: true,
+                force: true
+            });
+        }
+    },
+
+    /**
      * Sleeps for the specified amount of time.
      * @param {number} ms Time in milliseconds.
      * @returns Promise that resolves after the specified time.
@@ -94,7 +107,7 @@ module.exports = {
             const filePath = path.join(dir, file);
             const stats = fs.statSync(filePath);
             if (stats.isDirectory()) {
-                totalSize += calculateTotalSize(filePath); // Recursively calculate size of files in subdirectories
+                totalSize += module.exports.calculateTotalSize(filePath);
             } else {
                 totalSize += stats.size;
             }

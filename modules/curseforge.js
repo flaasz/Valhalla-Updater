@@ -74,18 +74,6 @@ module.exports = {
     },
 
     /**
-     * Gets the latest server pack file id.
-     * @param {number} modPackId Id of the modpack on CurseForge.
-     * @returns Id of the latest server pack file.
-     */
-    getLatestServerPackId: async function (modPackId) {
-        let data = await this.getPackData(modPackId);
-
-        if (data.latestFiles[0].serverPackFileId) return data.latestFiles[0].id;
-        return data.latestFiles[0].serverPackFileId;
-    },
-
-    /**
      * Checks if the modpack has an update.
      * @param {number} modPackId Id of the modpack on CurseForge.
      * @param {number} currentVersion Current version of the modpack.

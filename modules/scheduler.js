@@ -93,4 +93,7 @@ module.exports = {
         //dropCake();
         setInterval(dropCake, interval * 60 * 1000);
     }
+
+    //TODO Restart scheduler with checks
+    //TODO Role assignment!!!!
 };

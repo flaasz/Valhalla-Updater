@@ -1,5 +1,6 @@
 {
     "pterodactylHostName": "https://panel.valhallamc.io/",
-    "mongoDBName": "valhalla",
-    "mongoDBserversCollection": "servers"
+    "mongoDBName": "valhallamc",
+    "mongoDBserversCollection": "servers",
+    "velocityID": "c3883322"
 }

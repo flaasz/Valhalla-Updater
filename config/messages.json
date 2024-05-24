@@ -1,3 +1,4 @@
 {
-    
+    "alertScheduledUpdate": "tellraw @a {\"text\":\"This server has begun an automated update process. Please update your client to v[NEWVERSION]. This process takes up to 15 minutes!\",\"color\":\"red\"}",
+    "alertScheduledReboot": "tellraw @a {\"text\":\"This server has begun a scheduled reboot process. Please disconnect. This process takes up to 5 minutes!\",\"color\":\"red\"}"
 }
