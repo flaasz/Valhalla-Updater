@@ -1,3 +1,15 @@
+/*
+ * File: curseforge.js
+ * Project: Valhalla-Updater
+ * File Created: Saturday, 11th May 2024 7:27:27 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:06:01 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const axios = require('axios');
 require('dotenv').config();
 

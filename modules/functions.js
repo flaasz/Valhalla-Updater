@@ -1,3 +1,15 @@
+/*
+ * File: functions.js
+ * Project: Valhalla-Updater
+ * File Created: Saturday, 11th May 2024 4:13:53 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:06:15 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const fs = require('fs-extra');
 const path = require('path');
 const crypto = require('crypto');

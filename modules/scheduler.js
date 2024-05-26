@@ -1,11 +1,23 @@
+/*
+ * File: scheduler.js
+ * Project: Valhalla-Updater
+ * File Created: Wednesday, 15th May 2024 10:14:14 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Monday, 27th May 2024 1:41:48 am
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const curseforge = require("./curseforge");
 const functions = require("./functions");
 const modpacksch = require("./modpacksch");
 const mongo = require("./mongo");
 const pterodactyl = require("./pterodactyl");
-
-
-
+const {
+    alertCakeDrop
+} = require("../config/messages.json");
 
 module.exports = {
 
@@ -47,9 +59,6 @@ module.exports = {
                 await mongo.updateServer(server.modpackID, update);
                 //console.log(newestUpdateId);
             }
-            await servers.forEach(async server => {
-
-            });
         }
 
         updateCheck();
@@ -79,7 +88,7 @@ module.exports = {
 
 
                 for (let server of servers) {
-                    await pterodactyl.sendCommand(server.serverId, `say Cake drop!`);
+                    await pterodactyl.sendCommand(server.serverId, alertCakeDrop);
 
                     for (let i = 0; i < cakeAmount; i++) {
                         await pterodactyl.sendCommand(server.serverId, `give @a minecraft:cake 1`);
@@ -96,4 +105,5 @@ module.exports = {
 
     //TODO Restart scheduler with checks
     //TODO Role assignment!!!!
+    //TODO Automated perms on ptero for team!
 };

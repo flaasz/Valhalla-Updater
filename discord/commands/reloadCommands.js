@@ -1,3 +1,15 @@
+/*
+ * File: reloadCommands.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 17th May 2024 1:03:42 am
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:01:01 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const {
     SlashCommandBuilder
 } = require('discord.js');

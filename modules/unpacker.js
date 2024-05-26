@@ -1,3 +1,15 @@
+/*
+ * File: unpacker.js
+ * Project: Valhalla-Updater
+ * File Created: Sunday, 12th May 2024 1:50:29 am
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:07:32 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const unpacker = require("unpacker-with-progress");
 const progress = require('progress');
 const path = require('path');

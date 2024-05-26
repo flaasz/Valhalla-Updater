@@ -1,8 +1,23 @@
+/*
+ * File: mongo.js
+ * Project: Valhalla-Updater
+ * File Created: Wednesday, 15th May 2024 9:00:51 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Monday, 27th May 2024 12:29:38 am
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const {
     MongoClient
 } = require('mongodb');
 require('dotenv').config();
-const { mongoDBName, mongoDBserversCollection } = require("../config/config.json");
+const {
+    mongoDBName,
+    mongoDBserversCollection
+} = require("../config/config.json").mongodb;
 
 const mongoClient = new MongoClient(process.env.MONGODB_URL);
 

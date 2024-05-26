@@ -1,3 +1,15 @@
+/*
+ * File: compressor.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 10th May 2024 9:43:10 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:05:47 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const AdmZip = require('adm-zip');
 const ProgressBar = require('progress');
 const fs = require('fs');

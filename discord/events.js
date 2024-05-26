@@ -1,3 +1,15 @@
+/*
+ * File: events.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 17th May 2024 2:08:58 am
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:05:25 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const fs = require('fs');
 const path = require('path');
 

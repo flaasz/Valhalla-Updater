@@ -1,3 +1,15 @@
+/*
+ * File: execute.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 24th May 2024 4:40:44 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:00:44 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const {
     SlashCommandBuilder
 } = require('discord.js');

@@ -11,5 +11,16 @@
     "mongodb": "^6.6.1",
     "progress": "^2.0.3",
     "unpacker-with-progress": "^2.0.3"
-  }
+  },
+  "name": "valhalla-updater",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "",
+  "license": "MIT"
 }

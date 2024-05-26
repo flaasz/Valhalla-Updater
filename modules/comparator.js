@@ -1,3 +1,15 @@
+/*
+ * File: comparator.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 10th May 2024 7:42:12 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:05:37 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const dircompare = require('dir-compare');
 
 const options = {

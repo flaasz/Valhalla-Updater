@@ -1,3 +1,15 @@
+/*
+ * File: pterodactyl.js
+ * Project: Valhalla-Updater
+ * File Created: Saturday, 11th May 2024 8:15:21 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Monday, 27th May 2024 12:29:31 am
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const axios = require('axios');
 const progress = require('progress');
 require('dotenv').config();
@@ -6,7 +18,7 @@ require('dotenv').config();
 const pterodactylAPIKey = process.env.PTERODACTYL_APIKEY;
 const {
     pterodactylHostName
-} = require("../config/config.json");
+} = require("../config/config.json").pterodactyl;
 
 const header = {
     "Accept": "application/json",

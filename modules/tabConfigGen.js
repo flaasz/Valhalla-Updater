@@ -1,9 +1,18 @@
+/*
+ * File: tabConfigGen.js
+ * Project: Valhalla-Updater
+ * File Created: Monday, 20th May 2024 11:54:16 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Sunday, 26th May 2024 9:04:54 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const {
     getServers
 } = require("./mongo");
-
-
-
 
 module.exports = {
     generateTabConfig: async function () {
@@ -17,11 +26,14 @@ module.exports = {
 
         let longestTag = getLongestTag(serverList);
 
-        for (let i = 0; i < serverList.length; i++) {
-            console.log(toSmallCaps(serverList[i].name));
-            tagResult = tagResult + `  tag${i}:\n    conditions:\n      - "%server%=${serverList[i].name}"\n    yes: "${padTags(serverList[i], longestTag)}"\n    no: "%condition:tag${i + 1}%"\n`;
-            nameResult = nameResult + `  smallCaps${i}:\n    conditions:\n      - "%server%=${serverList[i].name}"\n    yes: "${toSmallCaps(serverList[i].name)}"\n    no: "%condition:smallCaps${i + 1}%"\n`;
+        for (let i = 0; i < serverList.length-1; i++) {
+            //console.log(toSmallCaps(serverList[i].name));
+            tagResult += `  tag${i}:\n    conditions:\n      - "%server%=${serverList[i].name}"\n    yes: "${padTags(serverList[i], longestTag)}"\n    no: "%condition:tag${i + 1}%"\n`;
+            nameResult += `  smallCaps${i}:\n    conditions:\n      - "%server%=${serverList[i].name}"\n    yes: "${toSmallCaps(serverList[i].name)}"\n    no: "%condition:smallCaps${i + 1}%"\n`;
         }
+        tagResult += `  tag${serverList.length-1}:\n    conditions:\n      - "%server%=${serverList[serverList.length-1].name}"\n    yes: "${padTags(serverList[serverList.length-1], longestTag)}"\n    no: "[???]"\n`;
+        nameResult += `  smallCaps${serverList.length-1}:\n    conditions:\n      - "%server%=${serverList[serverList.length-1].name}"\n    yes: "${toSmallCaps(serverList[serverList.length-1].name)}"\n    no: "???"\n`;
+
         console.log(tagResult + nameResult);
 
 
@@ -50,7 +62,6 @@ function getLongestTag(serverList) {
 
 function padTags(server, maxLength) {
     let padding = maxLength - server.tag.length;
-    console.log(padding);
     if(padding!=0) padding++;
     let space = " ";
 

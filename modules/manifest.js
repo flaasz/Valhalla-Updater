@@ -1,3 +1,15 @@
+/*
+ * File: manifest.js
+ * Project: Valhalla-Updater
+ * File Created: Sunday, 12th May 2024 7:23:33 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:00:09 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const fs = require('fs');
 const path = require('path');
 const {

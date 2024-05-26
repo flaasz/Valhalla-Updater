@@ -1,3 +1,15 @@
+/*
+ * File: interactionCreate.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 17th May 2024 12:58:32 am
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:01:17 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const { Events } = require('discord.js');
 
 module.exports = {

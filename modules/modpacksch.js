@@ -1,6 +1,16 @@
+/*
+ * File: modpacksch.js
+ * Project: Valhalla-Updater
+ * File Created: Wednesday, 15th May 2024 10:36:56 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:06:33 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const axios = require('axios');
-
-
 
 module.exports = {
 

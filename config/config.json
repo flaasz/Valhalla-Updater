@@ -1,6 +1,31 @@
 {
-    "pterodactylHostName": "https://panel.valhallamc.io/",
-    "mongoDBName": "valhallamc",
-    "mongoDBserversCollection": "servers",
-    "velocityID": "c3883322"
+    "discord": {
+        "active": true,
+        "announcementChannelId": "1022130933547159602",
+        "staffChannelId": "1022130933547159602",
+        "rolesChannelId": "1022130933547159602"
+    },
+    "pterodactyl": {
+        "active": true,
+        "pterodactylHostName": "https://panel.valhallamc.io/",
+        "velocityID": "c3883322"
+    },
+    "mongodb": {
+        "active": true,
+        "mongoDBName": "valhallamc",
+        "mongoDBserversCollection": "servers"
+    },
+    "scheduler": {
+        "checkForUpdates": {
+            "active": true,
+            "interval": 6
+        },
+        "cake": {
+            "active": true,
+            "interval": 120,
+            "min": 1,
+            "max": 10,
+            "chance": 3
+        }
+    }
 }

@@ -1,3 +1,15 @@
+/*
+ * File: banall.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 24th May 2024 12:23:58 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Sunday, 26th May 2024 10:50:09 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const {
     SlashCommandBuilder
 } = require('discord.js');

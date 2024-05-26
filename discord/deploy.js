@@ -1,3 +1,15 @@
+/*
+ * File: deploy.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 17th May 2024 12:28:43 am
+ * Author: flaasz
+ * -----
+ * Last Modified: Sunday, 26th May 2024 10:50:50 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const {
     REST,
     Routes
@@ -14,7 +26,7 @@ const commands = [];
 // Grab all the command files from the commands directory you created earlier
 const commandsPath = path.join(__dirname, 'commands');
 const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
-// Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
+// Grab the SlashCommandBuilder#tojson() output of each command's data for deployment
 for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
     const command = require(filePath);

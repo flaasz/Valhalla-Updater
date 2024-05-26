@@ -1,5 +1,16 @@
-var fs = require('fs');
+/*
+ * File: merger.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 10th May 2024 10:43:43 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:06:27 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
 
+var fs = require('fs');
 
 module.exports = {
     /**

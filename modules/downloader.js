@@ -1,3 +1,15 @@
+/*
+ * File: downloader.js
+ * Project: Valhalla-Updater
+ * File Created: Friday, 10th May 2024 10:32:29 pm
+ * Author: flaasz
+ * -----
+ * Last Modified: Saturday, 25th May 2024 4:06:08 pm
+ * Modified By: flaasz
+ * -----
+ * Copyright 2024 flaasz
+ */
+
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
