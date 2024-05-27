@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 8:15:21 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 12:29:31 am
+ * Last Modified: Monday, 27th May 2024 11:21:40 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -140,7 +140,7 @@ module.exports = {
                 headers: header
             });
             //console.log(response);
-            return response.data.attributes.name;
+            return response.data;
         } catch (error) {
             console.error(error);
         }

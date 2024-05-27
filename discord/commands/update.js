@@ -4,7 +4,7 @@
  * File Created: Friday, 24th May 2024 2:02:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:01:07 pm
+ * Last Modified: Monday, 27th May 2024 11:28:02 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -14,7 +14,7 @@ const {
     SlashCommandBuilder
 } = require('discord.js');
 const { getServers } = require('../../modules/mongo');
-const updater = require('../../modules/updater');
+const updater = require('../../managers/updateManager');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -67,6 +67,6 @@ module.exports = {
             default:
                 await interaction.followUp('Platform not supported!');
         }
-        await interaction.followUp(`Done! ${(Date.now()-time)/1000/60}m`);
+        await interaction.followUp(`Done! This update took ${((Date.now()-time)/1000/60).toFixed(2)} minutes.`);
 	},
-};
+};  

@@ -12,9 +12,9 @@
     "progress": "^2.0.3",
     "unpacker-with-progress": "^2.0.3"
   },
-  "name": "valhalla-updater",
+  "name": "Valhalla-Updater",
   "version": "1.0.0",
-  "description": "",
+  "description": "An all-in one updater for Minecraft modpacks hosted on CurseForge and FeedTheBeast.",
   "main": "server.js",
   "devDependencies": {},
   "scripts": {

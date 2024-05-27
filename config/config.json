@@ -17,11 +17,11 @@
     },
     "scheduler": {
         "checkForUpdates": {
-            "active": true,
+            "active": false,
             "interval": 6
         },
-        "cake": {
-            "active": true,
+        "cakeDrop": {
+            "active": false,
             "interval": 120,
             "min": 1,
             "max": 10,

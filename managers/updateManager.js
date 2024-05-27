@@ -1,10 +1,10 @@
 /*
- * File: updater.js
+ * File: updateManager.js
  * Project: Valhalla-Updater
  * File Created: Saturday, 11th May 2024 3:52:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 1:39:23 am
+ * Last Modified: Monday, 27th May 2024 11:24:41 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -14,28 +14,37 @@ const fs = require('fs');
 const {
     decompress,
     compressDirectory
-} = require('./compressor');
-const comparator = require('./comparator');
-const merger = require('./merger');
+} = require('../modules/compressor');
+const comparator = require('../modules/comparator');
+const merger = require('../modules/merger');
 const {
     sleep,
     checkMods,
     getVersion,
     rmRecursive
-} = require('./functions');
-const curseforge = require('./curseforge');
+} = require('../modules/functions');
+const curseforge = require('../modules/curseforge');
 const {
     download,
     upload
-} = require('./downloader');
-const pterodactyl = require('./pterodactyl');
+} = require('../modules/downloader');
+const pterodactyl = require('../modules/pterodactyl');
 const {
     unpack
-} = require('./unpacker');
-const modpacksch = require('./modpacksch');
+} = require('../modules/unpacker');
+const modpacksch = require('../modules/modpacksch');
 const {
-    alertScheduledUpdate
+    alertScheduledUpdate,
+    updateMessage
 } = require('../config/messages.json');
+const mongo = require('../modules/mongo');
+const {
+    sendWebhook
+} = require('../discord/send');
+const {
+    active,
+    announcementChannelId
+} = require("../config/config.json").discord;
 
 let newpack = { //reference
     //_id: new ObjectId('6638d513fb984056c222f480'),
@@ -182,6 +191,34 @@ module.exports = {
         progressLog += ` Done!\n- Update sequence completed. Cleaning up...`;
         await interaction.editReply(progressLog);
         rmRecursive(`./${pack.tag}`);
+
+        progressLog += ` Done!\n- Updating data and sending update message...`;
+        await interaction.editReply(progressLog);
+        let dbUpdate = {
+            $set: {
+                modpack_version: newVersionNumber,
+                fileID: pack.newestFileID,
+                newestFileID: pack.newestFileID,
+                requiresUpdate: false
+            }
+        };
+        mongo.updateServer(pack.modpackID, dbUpdate);
+
+        //TODO ai summary ???
+        const packData = await curseforge.getPackData(pack.modpackID);
+        const updateMessageContent = updateMessage.replace("[PACKNAME]", pack.name)
+            .replace("[NEWVERSION]", newVersionNumber)
+            .replace("[OLDVERSION]", pack.modpack_version)
+            .replace("[CHANGELOGURL]", `https://www.curseforge.com/minecraft/modpacks/${packData.slug}/files/${pack.newestFileID}`);
+
+        const updateWebhook = {
+            content: updateMessageContent,
+            username: pack.name,
+            avatarURL: packData.logo.url,
+        };
+
+        await sendWebhook(announcementChannelId, updateWebhook);
+
     },
 
     updateFTB: async function (pack) {

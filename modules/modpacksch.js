@@ -4,7 +4,7 @@
  * File Created: Wednesday, 15th May 2024 10:36:56 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:06:33 pm
+ * Last Modified: Monday, 27th May 2024 9:07:46 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -38,9 +38,20 @@ module.exports = {
     },
 
     /**
+     * Gett the data of the modpack from Feed The Beast. (modpacks.ch)
+     * @param {number} modPackId Modpack Id from Feed The Beast.
+     * @returns Object containing the data of the modpack.
+     */
+    getFTBPackData: async function (modPackId) {
+        let response = await axios.get(`https://api.modpacks.ch/public/modpack/${modPackId}`);
+
+        return response.data;
+    },
+
+    /**
      * Gets a manifest of the version of the modpack from CurseForge. (modpacks.ch)
-     * @param {*} modPackId Modpack Id from CurseForge.
-     * @param {*} modPackVersion Version of the modpack.
+     * @param {number} modPackId Modpack Id from CurseForge.
+     * @param {number} modPackVersion Version of the modpack.
      * @returns Object containing the manifest of the modpack.
      */
     getCFPackManifest: async function (modPackId, modPackVersion) {
@@ -48,5 +59,16 @@ module.exports = {
 
         return response.data;
     },
+
+    /**
+     * Gets the data of the modpack from CurseForge. (modpacks.ch)
+     * @param {number} modPackId Modpack Id from CurseForge.
+     * @returns Object containing the data of the modpack.
+     */
+    getCFPackData: async function (modPackId) {
+        let response = await axios.get(`https://api.modpacks.ch/public/curseforge/${modPackId}`);
+
+        return response.data;
+    }
 
 };

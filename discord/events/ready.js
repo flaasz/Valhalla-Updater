@@ -4,7 +4,7 @@
  * File Created: Friday, 17th May 2024 12:59:37 am
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 1:40:36 am
+ * Last Modified: Monday, 27th May 2024 7:50:21 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -15,10 +15,6 @@ const {
 const {
     deployCommands
 } = require('../deploy');
-const {
-    announcementChannelId,
-    staffChannelId
-} = require('../../config/config.json').discord;
 
 module.exports = {
     name: Events.ClientReady,
@@ -27,29 +23,5 @@ module.exports = {
         console.log(`Ready! Logged in as ${client.user.tag}`);
 
         await deployCommands(client.user.id);
-
-        for (let channnelId of [announcementChannelId, staffChannelId, rolesChannelId]) {
-            const channel = client.channels.cache.get(channnelId);
-            if (!channel) {
-                console.error(`Channel with ID ${channnelId} not found!`);
-                continue;
-            }
-            try {
-                const webhooks = await channel.fetchWebhooks();
-                const webhook = webhooks.find(wh => wh.token);
-
-                if (!webhook) {
-                    console.log(`Creating webhook for channel ${channel.name}...`);
-                    await channel.createWebhook({
-                        name: "Valhalla Updater",
-                        avatar: client.user.displayAvatarURL(),
-                    });
-                    process.stdout.moveCursor(0, -1);
-                    console.log(`Creating webhook for channel ${channel.name}... Done!`);
-                }
-            } catch (error) {
-                console.error('Error trying to create a webhook: ', error);
-            }
-        }
     }
 };

@@ -4,12 +4,12 @@
  * File Created: Saturday, 11th May 2024 6:17:20 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 1:42:00 am
+ * Last Modified: Monday, 27th May 2024 10:42:37 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
  */
-const updater = require("./modules/updater");
+const updater = require("./managers/updateManager");
 const curseforge = require("./modules/curseforge");
 const pterodactyl = require("./modules/pterodactyl");
 const downloader = require("./modules/downloader");
@@ -17,10 +17,11 @@ const manifest = require("./modules/manifest");
 const comparator = require("./modules/comparator");
 const functions = require("./modules/functions");
 const mongo = require("./modules/mongo");
-const scheduler = require("./modules/scheduler");
+const scheduler = require("./managers/schedulerManager");
 const modpacksch = require("./modules/modpacksch");
 const discord = require("./discord/bot");
 const tabConfigGen = require("./modules/tabConfigGen");
+const { sendWebhook } = require("./discord/send");
 require('dotenv').config();
 
 //updater.update(pack);
@@ -52,9 +53,11 @@ async function main() {
 
     //scheduler.cakeDrop();
 
-    //scheduler.checkForUpdates();
 
-    discord.launchBot();
+    await discord.launchBot();
+
+    scheduler.loadSchedulers();
+
 
     //tabConfigGen.generateTabConfig();
 
