@@ -4,17 +4,20 @@
  * File Created: Friday, 10th May 2024 9:43:10 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:05:47 pm
+ * Last Modified: Tuesday, 28th May 2024 11:12:19 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
  */
 
 const AdmZip = require('adm-zip');
+const archiver = require('archiver');
 const ProgressBar = require('progress');
 const fs = require('fs');
 const path = require('path');
-const { calculateTotalSize } = require('./functions');
+const {
+    calculateTotalSize
+} = require('./functions');
 
 
 module.exports = {
@@ -92,45 +95,98 @@ module.exports = {
 
     /**
      * Compresses content of the directory to a zip file.
-     * @param {string} filesToCompress Path to a directory to compress.
+     * @param {string} directoryPath Path to a directory to compress.
      * @param {string} outputPath Path to the output zip file.
      * @returns
      */
-    compressDirectory: function (directoryPath, outputPath) {
-        const totalSize = calculateTotalSize(directoryPath);
+    compressDirectoryAAA: function (directoryPath, outputPath) {
+        return new Promise((resolve, reject) => {
+            const totalSize = calculateTotalSize(directoryPath);
 
-        //console.log(totalSize);
-        // Initialize progress bar
-        const bar = new ProgressBar(`Compressing ${directoryPath.split("/").at(-1)} [:bar] :rate/bps :percent :etas`, {
-            complete: '=',
-            incomplete: ' ',
-            width: 40,
-            total: totalSize
-        });
+            // Initialize progress bar
+            const bar = new ProgressBar(`Compressing ${directoryPath.split("/").at(-1)} [:bar] :rate/bps :percent :etas`, {
+                complete: '=',
+                incomplete: ' ',
+                width: 40,
+                total: totalSize
+            });
 
-        // Compress files synchronously while updating progress bar
-        const zip = new AdmZip();
+            const output = fs.createWriteStream(outputPath);
+            const archive = archiver('zip', {
+                zlib: {
+                    level: 9
+                } // Sets the compression level.
+            });
 
-        function addFilesToZip(dir, relativePath) {
-            const files = fs.readdirSync(dir);
-            files.forEach(file => {
-                const filePath = path.join(dir, file);
-                const stats = fs.statSync(filePath);
-                if (stats.isDirectory()) {
-                    const subdirRelativePath = path.join(relativePath, file);
-                    zip.addFile(subdirRelativePath + '/', Buffer.alloc(0)); // Add directory entry
-                    addFilesToZip(filePath, subdirRelativePath); // Recursively add files in subdirectories
-                } else {
+            output.on('close', function () {
+                console.log(archive.pointer() + ' total bytes');
+                console.log('archiver has been finalized and the output file descriptor has closed.');
+                resolve(); // Resolve the promise here
+            });
+
+            archive.on('error', function (err) {
+                reject(err); // Reject the promise if there's an error
+            });
+
+            archive.on('progress', function (progress) {
+                bar.tick(progress.fs.processedBytes - bar.curr);
+            });
+
+            archive.pipe(output);
+
+            // Add files and directories with permissions
+            function addFilesToArchive(dir, relativePath) {
+                const files = fs.readdirSync(dir);
+                files.forEach(file => {
+                    const filePath = path.join(dir, file);
+                    const stats = fs.statSync(filePath);
                     const fileRelativePath = path.join(relativePath, file);
-                    zip.addLocalFile(filePath, relativePath);
-                    bar.tick(stats.size); // Update progress bar
+                    if (stats.isDirectory()) {
+                        archive.directory(filePath, fileRelativePath, {
+                            mode: stats.mode
+                        });
+                        addFilesToArchive(filePath, fileRelativePath);
+                    } else {
+                        archive.file(filePath, {
+                            name: fileRelativePath,
+                            mode: stats.mode
+                        });
+                        bar.tick(stats.size); // Update progress bar
+                    }
+                });
+            }
+
+            addFilesToArchive(directoryPath, '');
+
+            // Finalize the archive
+            archive.finalize();
+        });
+    },
+
+    compressDirectory: function (sourceDir, outPath) {
+        console.log(`Compressing ${sourceDir} to ${outPath}...`);
+        return new Promise((resolve, reject) => {
+            const output = fs.createWriteStream(outPath);
+            const archive = archiver('zip', {
+                zlib: {
+                    level: 9
                 }
             });
-        }
 
-        addFilesToZip(directoryPath, '');
+            output.on('close', function () {
+                console.log(`${outPath} compression complete.`);
+                resolve();
+            });
 
-        // Write zip to output path
-        zip.writeZip(outputPath);
+            archive.on('error', function (err) {
+                reject(err);
+            });
+
+            archive.pipe(output);
+
+            archive.directory(sourceDir, false);
+
+            archive.finalize();
+        });
     }
 };

@@ -4,7 +4,7 @@
  * File Created: Friday, 24th May 2024 4:40:44 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 12:05:03 am
+ * Last Modified: Tuesday, 28th May 2024 7:19:59 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -61,7 +61,7 @@ module.exports = {
         if (query === 'all') {
             for (const server of serverList) {
                 sendCommand(server.serverId, command);
-                console.log(`Sent command to ${server.serverId}`);
+                console.log(`Sent command to ${server.name}`);
             }
             await interaction.reply(`Sent command to **all** servers!`);
             return;

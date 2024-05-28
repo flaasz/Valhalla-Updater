@@ -4,7 +4,7 @@
  * File Created: Friday, 10th May 2024 7:42:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 2:11:42 am
+ * Last Modified: Tuesday, 28th May 2024 1:32:09 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -120,6 +120,40 @@ module.exports = {
         console.log(customChanges);
         return customChanges;
     },
+
+    /**
+     * Finds the changes between two manifest files.
+     * @param {Array} customManifest Manifest with custom changes.
+     * @param {Array} originalManifest Manifest with original changes.
+     * @returns Object containing lists of deletions and additions.
+     */
+    findManifestChanges: async function (customManifest, originalManifest) {
+        let changeList = {
+            deletions: [],
+            additions: [],
+        };
+
+        let changelog = await this.compareManifest(customManifest, originalManifest);
+
+        changelog.leftOnly.forEach(dif => {
+            console.log(`Difference - delete: ${dif.path}, name1: ${dif.name}`);
+            changeList.deletions.push(dif.path + dif.name);
+        });
+
+        changelog.rightOnly.forEach(dif => {
+            console.log(`Difference - add: ${dif.path}, name2: ${dif.name}`);
+            changeList.additions.push(dif.path + dif.name);
+        });
+
+        changelog.different.forEach(dif => {
+            console.log(`Difference - replace: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
+            changeList.deletions.push(dif.left.path + dif.left.name);
+            changeList.additions.push(dif.right.path + dif.right.name);
+        });
+
+        return changeList;
+    },
+
 
     /**
      * Compare two manifest files and return the differences.

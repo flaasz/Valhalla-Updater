@@ -4,13 +4,16 @@
  * File Created: Friday, 10th May 2024 10:43:43 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:06:27 pm
+ * Last Modified: Tuesday, 28th May 2024 7:25:50 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
  */
 
 var fs = require('fs');
+const {
+    downloadList
+} = require('./downloader');
 
 module.exports = {
     /**
@@ -41,28 +44,23 @@ module.exports = {
      * Merges the changes from the changeList to the temp directory.
      * @param {string} dir The directory to merge the changes to.
      * @param {object} changeList Object containing the changes.
-     * @param {object} customChanges Object containing the custom changes.
+     * @param {object} newManifest Object containing the new manifest.
      */
-    mergeFromManifest: function (dir, changeList, customChanges) {
-
-
-        //this doesnt work yet!!!!!
-        let customOverwrites = [];
-
-        for (let path of changeList.left) {
+    mergeFromManifest: async function (dir, changeList, newManifest) {
+        for (let path of changeList.deletions) {
             if (fs.existsSync(`${dir}${path}`)) {
-                fs.rmSync(`${dir}${path}`, {
+                await fs.rmSync(`${dir}${path}`, {
                     recursive: true,
                     force: true
                 });
             }
         }
         console.log("Removed old files");
-        for (let path of changeList.right) {
-            fs.cpSync(`${dir}${path}`, `${dir}${path}`, {
-                recursive: true
-            });
-        }
+        let toDownload = newManifest.files.filter(obj => {
+            const fullPath = `${obj.path}${obj.name}`;
+            return changeList.additions.includes(fullPath);
+        });
+        await downloadList(toDownload, dir);
         console.log("Added new files");
     }
 };

@@ -4,7 +4,7 @@
  * File Created: Friday, 24th May 2024 2:02:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 12:23:59 am
+ * Last Modified: Tuesday, 28th May 2024 8:56:14 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -54,7 +54,7 @@ module.exports = {
 
         const server = serverList.find(server => server.name === query || server.tag === query.toLowerCase());
         if (!server || server.requiresUpdate === false) {
-            await message.edit('Server not found!');
+            await message.edit(`Server **${query}** not found or doesn't need an update!`);
             return;
         }
 

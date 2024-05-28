@@ -4,7 +4,7 @@
  * File Created: Sunday, 12th May 2024 1:50:29 am
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:07:32 pm
+ * Last Modified: Tuesday, 28th May 2024 11:25:05 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -14,6 +14,8 @@ const unpacker = require("unpacker-with-progress");
 const progress = require('progress');
 const path = require('path');
 const fs = require('fs');
+const tar = require('tar');
+const zlib = require('zlib');
 
 module.exports = {
 
@@ -39,5 +41,23 @@ module.exports = {
                 }
             })
         ]);
+    },
+
+    getStructure: async function (tarGzFilePath) {
+        const baseFileStructure = [];
+
+        return new Promise((resolve, reject) => {
+            fs.createReadStream(tarGzFilePath)
+                .pipe(zlib.createGunzip())
+                .pipe(tar.t())
+                .on('entry', entry => {
+                    if (entry.path.split('/').length === 1) {
+                        baseFileStructure.push(entry.path);
+                    }
+                    entry.resume(); // Ensure stream continues
+                })
+                .on('end', () => resolve(baseFileStructure))
+                .on('error', err => reject(err));
+        });
     }
 };

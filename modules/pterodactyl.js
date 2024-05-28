@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 8:15:21 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 11:21:40 pm
+ * Last Modified: Tuesday, 28th May 2024 10:50:21 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -41,7 +41,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -61,7 +61,7 @@ module.exports = {
             //console.log(response);
             return response.data.attributes.url;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -78,7 +78,7 @@ module.exports = {
             //console.log(response);
             return response.data.attributes.url;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -98,7 +98,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -120,7 +120,7 @@ module.exports = {
             //console.log(response);
             return response.data.attributes.name;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -142,7 +142,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -164,7 +164,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -188,7 +188,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error);
+            console.error(error.response.data);
         }
     },
 
@@ -207,7 +207,9 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.log(error.response.status);
+            if (error.response.status != 502) {
+                console.log(error.response.data);
+            }
         }
     },
 
@@ -218,7 +220,6 @@ module.exports = {
      * @param {number} interval Interval in seconds to check the server status. Default interval is 3 seconds.
      */
     shutdown: async function (serverID, timeToKill = 30, interval = 3) {
-
         const progressBar = new progress(`Shutting down the server [:bar] :percent :etas`, {
             width: 40,
             complete: '=',
@@ -229,30 +230,39 @@ module.exports = {
 
         let iterator = 0;
         await this.sendPowerAction(serverID, "stop");
-        let shutdownSequence = setInterval(async () => {
-            let status = await this.getStatus(serverID);
-            //console.log(status);
-            if (status.attributes.current_state === "offline") {
-                progressBar.update(1);
-                clearInterval(shutdownSequence);
-            } else if (iterator < timeToKill) {
-                progressBar.tick(interval);
-                iterator += interval;
-            }
-            if (iterator >= timeToKill) {
-                progressBar.update(0.99);
-                console.log("\nThis is taking longer than expected...");
-                process.stdout.moveCursor(76, -2);
 
-                if (status.attributes.resources.cpu_absolute < 10) {
-                    progressBar.update(1);
-                    console.log("\nServer is idling. Killing it...");
-                    await this.sendPowerAction(serverID, "kill");
+        return new Promise((resolve, reject) => {
+            let shutdownSequence = setInterval(async () => {
+                try {
+                    let status = await this.getStatus(serverID);
+
+                    if (status.attributes.current_state === "offline") {
+                        progressBar.update(1);
+                        clearInterval(shutdownSequence);
+                        resolve();
+                    } else if (iterator < timeToKill) {
+                        progressBar.tick(interval);
+                        iterator += interval;
+                    }
+                    if (iterator >= timeToKill) {
+                        progressBar.update(0.99);
+                        console.log("\nThis is taking longer than expected...");
+                        process.stdout.moveCursor(76, -2);
+
+                        if (status.attributes.resources.cpu_absolute < 10) {
+                            progressBar.update(1);
+                            console.log("\nServer is idling. Killing it...");
+                            await this.sendPowerAction(serverID, "kill");
+                            clearInterval(shutdownSequence);
+                            resolve();
+                        }
+                    }
+                } catch (error) {
                     clearInterval(shutdownSequence);
+                    reject(error);
                 }
-
-            }
-        }, interval * 1000);
+            }, interval * 1000);
+        });
     }
 
 };

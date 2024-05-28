@@ -4,7 +4,7 @@
  * File Created: Friday, 10th May 2024 10:32:29 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:06:08 pm
+ * Last Modified: Tuesday, 28th May 2024 10:19:05 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -71,7 +71,6 @@ module.exports = {
      * @param {string} destinationFolder Path to save the downloaded files.
      */
     downloadList: async function (list, destinationFolder) {
-
         const progressBar = new progress(`Downloading list [:bar] :rate/bps :percent :etas`, {
             width: 40,
             complete: '=',
@@ -79,43 +78,42 @@ module.exports = {
             renderThrottle: 100,
             total: list.length
         });
-
-
-        for (let file of list) {
+    
+        const downloadPromises = list.map(async (file) => {
             progressBar.tick(1);
-
-            if (file.clientonly === true) continue;
-
+    
+            if (file.clientonly === true) return;
+    
             let destinationPath = path.join(destinationFolder, file.path, file.name);
-
+    
             if (!fs.existsSync(path.dirname(destinationPath))) {
                 fs.mkdirSync(path.dirname(destinationPath), {
                     recursive: true
                 });
             }
-
+    
             if (!file.url) {
-                file.url = `https://edge.forgecdn.net/files/${file.curseforge.file.toString().substring(0,4)}/${file.curseforge.file.toString().substr(4,7)}/${file.name}`;
+                file.url = `https://edge.forgecdn.net/files/${file.curseforge.file.toString().substring(0, 4)}/${file.curseforge.file.toString().substr(4, 7)}/${file.name}`;
             }
-
+    
             const writer = fs.createWriteStream(destinationPath);
-            const {
-                data,
-                headers
-            } = await axios({
+            const { data } = await axios({
                 url: file.url,
                 method: 'GET',
                 responseType: 'stream'
             });
-
+    
             data.pipe(writer);
-
-            await new Promise((resolve, reject) => {
+    
+            return new Promise((resolve, reject) => {
                 writer.on('finish', resolve);
                 writer.on('error', reject);
             });
-        }
-
+        });
+    
+        // Wait for all downloads to complete
+        await Promise.all(downloadPromises);
+    
         console.log(`List downloaded successfully.`);
     },
 
