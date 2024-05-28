@@ -4,7 +4,7 @@
  * File Created: Sunday, 12th May 2024 7:23:33 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:00:09 pm
+ * Last Modified: Tuesday, 28th May 2024 2:09:59 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -64,7 +64,7 @@ function createEntry(directory, basePath, progressBar, manifest) {
         } else {
             let entry = {
                 name: file,
-                path: path.relative(basePath, directory).replace(/\\/g, '/'),
+                path: "./" + path.relative(basePath, directory).replace(/\\/g, '/') + "/",
                 size: stats.size,
                 sha1: hashFile(filePath)
             };

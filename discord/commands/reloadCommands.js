@@ -4,7 +4,7 @@
  * File Created: Friday, 17th May 2024 1:03:42 am
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:01:01 pm
+ * Last Modified: Tuesday, 28th May 2024 12:05:29 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -20,6 +20,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('reloadcommands')
         .setDescription('Reloads all commands on the bot!')
+        .setDMPermission(false)
         .setDefaultMemberPermissions(0),
     async execute(interaction) {
         const {

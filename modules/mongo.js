@@ -4,7 +4,7 @@
  * File Created: Wednesday, 15th May 2024 9:00:51 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 12:29:38 am
+ * Last Modified: Monday, 27th May 2024 11:54:21 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -40,16 +40,32 @@ module.exports = {
     },
 
     /**
-     * Update the data of a server in MongoDB.
+     * Update the data of multiple servers in MongoDB.
      * @param {number} modpackId ID of the modpack on CF/FTB.
      * @param {object} update Object containing the fields to update.
      */
-    updateServer: async function (modpackId, update) {
+    updateServers: async function (modpackId, update) {
         await mongoClient.connect();
         const serversCollection = db.collection(mongoDBserversCollection);
 
         await serversCollection.updateMany({
             modpackID: modpackId
+        }, update);
+
+        mongoClient.close();
+    },
+
+    /**
+     * Update the data of a single server in MongoDB.
+     * @param {number} serverId ID of the server on the panel.
+     * @param {object} update Object containing the fields to update.
+     */
+    updateServer: async function (serverId, update) {
+        await mongoClient.connect();
+        const serversCollection = db.collection(mongoDBserversCollection);
+
+        await serversCollection.updateOne({
+            serverId: serverId
         }, update);
 
         mongoClient.close();

@@ -4,7 +4,7 @@
  * File Created: Friday, 24th May 2024 4:40:44 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:00:44 pm
+ * Last Modified: Tuesday, 28th May 2024 12:05:03 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -24,6 +24,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('execute')
         .setDescription('Execute a command on the server!')
+        .setDefaultMemberPermissions(0)
         .addStringOption(option =>
             option.setName('server')
             .setDescription('Name of the server to execute the command on')

@@ -4,7 +4,7 @@
  * File Created: Wednesday, 15th May 2024 10:36:56 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 9:07:46 pm
+ * Last Modified: Tuesday, 28th May 2024 1:09:36 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -38,7 +38,7 @@ module.exports = {
     },
 
     /**
-     * Gett the data of the modpack from Feed The Beast. (modpacks.ch)
+     * Gets the data of the modpack from Feed The Beast. (modpacks.ch)
      * @param {number} modPackId Modpack Id from Feed The Beast.
      * @returns Object containing the data of the modpack.
      */
@@ -46,6 +46,19 @@ module.exports = {
         let response = await axios.get(`https://api.modpacks.ch/public/modpack/${modPackId}`);
 
         return response.data;
+    },
+
+
+    /**
+     * Gets the changelog of the version of the modpack from Feed The Beast. (modpacks.ch)
+     * @param {number} modPackId Modpack Id from Feed The Beast.
+     * @param {number} modPackVersion Version of the modpack.
+     * @returns String containing the changelog of the modpack.
+     */
+    getFTBChangelog: async function (modPackId, modPackVersion) {
+        let response = await axios.get(`https://api.modpacks.ch/public/modpack/${modPackId}/${modPackVersion}/changelog`);
+
+        return response.data.content;
     },
 
     /**

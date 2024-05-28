@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 4:13:53 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:06:15 pm
+ * Last Modified: Tuesday, 28th May 2024 1:55:59 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -142,7 +142,7 @@ module.exports = {
             if (stats.isFile()) {
                 count++;
             } else if (stats.isDirectory()) {
-                count += countFiles(filePath);
+                count += module.exports.countFiles(filePath);
             }
         });
 

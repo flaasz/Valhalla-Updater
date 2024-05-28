@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 7:27:27 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:06:01 pm
+ * Last Modified: Tuesday, 28th May 2024 1:09:00 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -83,6 +83,23 @@ module.exports = {
         let data = await this.getPackData(modPackId);
 
         return data.mainFileId;
+    },
+
+    /**
+     * Gets the latest pack version changelog.
+     * @param {number} modPackId Id of the modpack on CurseForge.
+     * @param {number} versionId Version of the changelog.
+     * @returns String containing the changelog.
+     */
+    getChangelog: async function (modPackId, versionId) {
+        try {
+            let response = await axios.get(`https://api.curseforge.com/v1/mods/${modPackId}/files/${versionId}/changelog`, {
+                headers: header
+            });
+            return response.data.data;
+        } catch (error) {
+            console.error(error);
+        }
     },
 
     /**

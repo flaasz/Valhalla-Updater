@@ -4,7 +4,7 @@
  * File Created: Monday, 27th May 2024 8:27:53 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 10:35:55 pm
+ * Last Modified: Monday, 27th May 2024 11:52:27 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -102,7 +102,7 @@ module.exports = {
                     }
                 };
 
-                await mongo.updateServer(server.modpackID, update);
+                await mongo.updateServers(server.modpackID, update);
                 //console.log(newestUpdateId);
             }
         }

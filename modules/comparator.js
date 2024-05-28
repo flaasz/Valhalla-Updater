@@ -4,7 +4,7 @@
  * File Created: Friday, 10th May 2024 7:42:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:05:37 pm
+ * Last Modified: Tuesday, 28th May 2024 2:11:42 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -94,30 +94,30 @@ module.exports = {
      * @param {Array} originalManifest Manifest with original changes.
      * @returns Object containing lists of custom files, missing files, and edited files.
      */
-    findCustomManifestChanges: function (customManifest, originalManifest) {
+    findCustomManifestChanges: async function (customManifest, originalManifest) {
         let customChanges = {
             customFiles: [],
             missingFiles: [],
             editedFiles: []
         };
 
-        let changelog = this.compareManifest(customManifest, originalManifest);
+        let changelog = await this.compareManifest(customManifest, originalManifest);
 
         changelog.leftOnly.forEach(dif => {
             console.log(`Custom file: ${dif.path}, name1: ${dif.name}`);
-            customChanges.customFiles.push(dif.path + "\\" + dif.name);
+            customChanges.customFiles.push(dif.path + dif.name);
         });
 
         changelog.rightOnly.forEach(dif => {
             console.log(`Missing file: ${dif.path}, name2: ${dif.name}`);
-            customChanges.missingFiles.push(dif.path + "\\" + dif.name);
+            customChanges.missingFiles.push(dif.path + dif.name);
         });
 
         changelog.different.forEach(dif => {
             console.log(`Custom file - edited: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
-            customChanges.editedFiles.push(dif.left.path + "\\" + dif.left.name);
+            customChanges.editedFiles.push(dif.left.path + dif.left.name);
         });
-
+        console.log(customChanges);
         return customChanges;
     },
 

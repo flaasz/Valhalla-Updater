@@ -4,7 +4,7 @@
  * File Created: Friday, 24th May 2024 2:02:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 11:28:02 pm
+ * Last Modified: Tuesday, 28th May 2024 12:23:59 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -20,6 +20,8 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('update')
 		.setDescription('Runs an update sequence on a server!')
+        .setDefaultMemberPermissions(0)
+        .setDMPermission(false)
 		.addStringOption(option =>
 			option.setName('server')
 				.setDescription('Server to update')
@@ -46,27 +48,30 @@ module.exports = {
         const query = interaction.options.getString('server');
         const serverList = await getServers();
         await interaction.deferReply();
+        await interaction.editReply("Update manager is starting...");
+
+        const message = await interaction.fetchReply();
 
         const server = serverList.find(server => server.name === query || server.tag === query.toLowerCase());
         if (!server || server.requiresUpdate === false) {
-            await interaction.followUp('Server not found!');
+            await message.edit('Server not found!');
             return;
         }
 
         let time = Date.now();
         switch (server.platform) {
             case "curseforge": 
-                await updater.updateCF(server, interaction);
+                await updater.updateCF(server, message);
                 break;
             case "feedthebeast":
-                await updater.updateFTB(server, interaction);
+                await updater.updateFTB(server, message);
                 break;
             case "gregtechnewhorizons":
-                await updater.updateGTNH(server, interaction);
+                await updater.updateGTNH(server, message);
                 break;
             default:
-                await interaction.followUp('Platform not supported!');
+                await message.edit('Platform not supported!');
         }
-        await interaction.followUp(`Done! This update took ${((Date.now()-time)/1000/60).toFixed(2)} minutes.`);
+        await message.reply(`Done! This update took ${((Date.now()-time)/1000/60).toFixed(2)} minutes.`);
 	},
 };  
