@@ -1,10 +1,10 @@
 /*
  * File: bot.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Friday, 17th May 2024 12:02:23 am
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 7:51:19 pm
+ * Last Modified: Wednesday, 29th May 2024 1:09:25 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -27,7 +27,8 @@ const client = new Client({
 
 module.exports = {
     launchBot: async function () {
-
+        
+        console.log("Launching bot...");
         commands.loadCommandFiles(client);
         events.loadEventFiles(client);
 

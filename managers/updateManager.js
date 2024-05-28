@@ -1,10 +1,10 @@
 /*
  * File: updateManager.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Saturday, 11th May 2024 3:52:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 11:40:18 pm
+ * Last Modified: Wednesday, 29th May 2024 12:56:30 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -30,8 +30,7 @@ const {
 } = require('../modules/downloader');
 const pterodactyl = require('../modules/pterodactyl');
 const {
-    unpack,
-    getStructure
+    unpack
 } = require('../modules/unpacker');
 const modpacksch = require('../modules/modpacksch');
 const {
@@ -74,6 +73,13 @@ let newpack = { //reference
 };
 
 module.exports = {
+
+    /**
+     * Updates the server with the latest version of the modpack. (CurseForge)
+     * @param {object} pack Object with the server data.
+     * @param {object} interaction Object with the interaction data.(for Discord)
+     */
+
     updateCF: async function (pack, interaction) {
 
         const packManifest = await modpacksch.getCFPackManifest(pack.modpackID, pack.newestFileID);
@@ -225,8 +231,12 @@ module.exports = {
 
     },
 
+    /**
+     * Updates the server with the latest version of the modpack. (Feed The Beast)
+     * @param {object} pack Object with the server data.
+     * @param {object} interaction Object with the interaction data.(for Discord)
+     */
     updateFTB: async function (pack, interaction) {
-        //TODO ftbupdater sequence
         const newManifest = await modpacksch.getFTBPackManifest(pack.modpackID, pack.newestFileID);
 
         const newVersionNumber = getVersion(newManifest.name);
@@ -368,9 +378,10 @@ module.exports = {
     },
 
     /**
-     * Restores an update from the list of available versions.
+     * Restores an update from the list of available versions. Pterodactyl has trouble unpacking tar.gz files, so it repacks the backup to a zip file first.
      * @param {object} pack Object containing the server data.
      * @param {string} backup The backup file to restore from.
+     * @param {object} interaction Object containing the interaction data. (for Discord)
      */
     restore: async function (pack, backup, interaction) {
 
@@ -394,11 +405,17 @@ module.exports = {
         const uploadUrl = await pterodactyl.getUploadLink(pack.serverId);
         await upload(`${pack.tag}/${pack.tag}_${restoredPackData[1]}_${restoredPackData[2]}.zip`, uploadUrl);
 
-        progressLog += ` Done!\n- Deleting failed update files...`;
+        progressLog += ` Done!\n- Deleting update files...`;
         await interaction.edit(progressLog);
 
-        let toDeleteList = await getStructure(`./vault/${pack.tag}/${backup}`);
-        console.log(toDeleteList); //FIXME dirs are missing
+        let toDeleteList = [];
+        
+        await fs.readdirSync(`./vault/${pack.tag}/${backup}`).forEach(file => {
+            toDeleteList.push(file);
+        });
+
+        // DANGER ZONE - LINES BELOW MODIFY THE SERVER FILES ON LIVE BRANCH
+        
         await pterodactyl.deleteFile(pack.serverId, toDeleteList);
         await sleep(1000);
 
@@ -407,7 +424,9 @@ module.exports = {
 
         await pterodactyl.decompressFile(pack.serverId, `${pack.tag}_${restoredPackData[1]}_${restoredPackData[2]}.zip`);
         await sleep(1000);
-        await pterodactyl.deleteFile(pack.serverId, [backup]);
+        await pterodactyl.deleteFile(pack.serverId, [`${pack.tag}_${restoredPackData[1]}_${restoredPackData[2]}.zip`]);
+
+        // DANGER ZONE - LINES ABOVE MODIFY THE SERVER FILES ON LIVE BRANCH
 
         /*progressLog += ` Done!\n- Starting the server...`;
         await interaction.edit(progressLog);
