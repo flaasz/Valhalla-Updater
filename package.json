@@ -10,6 +10,7 @@
     "fs-extra": "^11.2.0",
     "mongodb": "^6.6.1",
     "progress": "^2.0.3",
+    "sharp": "^0.33.4",
     "unpacker-with-progress": "^2.0.3"
   },
   "name": "valhalla-updater",

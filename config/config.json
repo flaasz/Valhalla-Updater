@@ -26,6 +26,12 @@
             "min": 1,
             "max": 10,
             "chance": 3
+        },
+        "roleAssigner": {
+            "active": true,
+            "interval": 1,
+            "roleChannelId": "1245425589033369674",
+            "MentionRoleId": "1017725550019751976"
         }
     }
 }

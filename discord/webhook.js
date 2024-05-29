@@ -1,16 +1,16 @@
 /*
- * File: send.js
+ * File: webhook.js
  * Project: valhalla-updater
  * File Created: Monday, 27th May 2024 7:31:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 29th May 2024 2:47:22 pm
+ * Last Modified: Wednesday, 29th May 2024 7:41:03 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
  */
 
-const { getClient } = require('../discord/bot');
+const { getClient } = require('./bot');
 
 module.exports = {
     /**
@@ -20,6 +20,20 @@ module.exports = {
      * @returns 
      */
     sendWebhook: async function (channelId, message) {
+        const client = await getClient();
+        const channel = client.channels.cache.get(channelId);
+
+        if (!channel) {
+            console.error(`Channel with ID ${channelId} not found!`);
+            return;
+        }
+
+        let webhook = this.getWebhook(channelId);
+
+        webhook.send(message);
+    },
+
+    getWebhook: async function(channelId) {
         const client = await getClient();
         const channel = client.channels.cache.get(channelId);
 
@@ -41,7 +55,7 @@ module.exports = {
                 console.log(`Creating webhook for channel ${channel.name}... Done!`);
             }
 
-            webhook.send(message);
+            return webhook;
 
         } catch (error) {
             console.error('Error trying to create a webhook: ', error);

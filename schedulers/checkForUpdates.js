@@ -1,10 +1,10 @@
 /*
  * File: checkForUpdates.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Monday, 27th May 2024 8:27:53 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 11:52:27 pm
+ * Last Modified: Wednesday, 29th May 2024 7:41:34 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -19,7 +19,7 @@ const {
 } = require("discord.js");
 const {
     sendWebhook
-} = require("../discord/send");
+} = require("../discord/webhook");
 const {
     active,
     staffChannelId
