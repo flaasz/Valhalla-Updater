@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 3:52:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 29th May 2024 2:57:48 pm
+ * Last Modified: Wednesday, 29th May 2024 7:38:06 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -40,7 +40,7 @@ const {
 const mongo = require('../modules/mongo');
 const {
     sendWebhook
-} = require('../discord/send');
+} = require('../discord/webhook');
 const manifest = require('../modules/manifest');
 const {
     active,

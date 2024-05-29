@@ -1,10 +1,10 @@
 /*
  * File: interactionCreate.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Friday, 17th May 2024 12:58:32 am
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 25th May 2024 4:01:17 pm
+ * Last Modified: Wednesday, 29th May 2024 9:23:27 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
