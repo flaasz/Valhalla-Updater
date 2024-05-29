@@ -4,24 +4,34 @@
  * File Created: Wednesday, 29th May 2024 7:30:52 pm
  * Author: flaasz
  * -----
- * Last Modified: Thursday, 30th May 2024 12:36:02 am
+ * Last Modified: Thursday, 30th May 2024 1:01:56 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
  */
-const { rmSync } = require("fs-extra");
+const {
+    rmSync
+} = require("fs-extra");
+const sharp = require('sharp');
+const axios = require('axios');
 const {
     getClient
 } = require("../discord/bot");
 const {
     getWebhook
 } = require("../discord/webhook");
-const { getPackData } = require("../modules/curseforge");
-const { download } = require("../modules/downloader");
+const {
+    getPackData
+} = require("../modules/curseforge");
+const {
+    download
+} = require("../modules/downloader");
 const {
     sleep
 } = require("../modules/functions");
-const { getFTBPackData } = require("../modules/modpacksch");
+const {
+    getFTBPackData
+} = require("../modules/modpacksch");
 const mongo = require("../modules/mongo");
 const {
     ActionRowBuilder,
@@ -87,9 +97,9 @@ module.exports = {
             serverListFull = await addMentionButton(serverList);
 
             serverList = serverListFull.filter(server => server.discord_role_id != "");
-            serverListMissing = serverListFull.filter(server => server.discord_role_id === ""); 
+            serverListMissing = serverListFull.filter(server => server.discord_role_id === "");
             await generateNewRoles(serverListMissing);
-            
+
             const webhook = await getWebhook(options.roleChannelId);
 
             const channel = await client.channels.fetch(options.roleChannelId);
@@ -167,8 +177,24 @@ module.exports = {
                 const packData = await getPackData(server.modpackID);
                 emojiURL = packData.logo.url;
             }
-            //FIXME: emoji too big
-            //await channel.guild.emojis.create({ attachment: emojiURL, name: server.tag });
+
+            const response = await axios.get(emojiURL, {
+                responseType: 'arraybuffer'
+            });
+            const buffer = response.data;
+
+            resizedBuffer = await sharp(buffer)
+                .resize({
+                    width: 128,
+                    height: 128,
+                    fit: 'inside'
+                })
+                .toBuffer();
+
+            await channel.guild.emojis.create({
+                attachment: resizedBuffer,
+                name: server.tag
+            });
         }
 
         async function addMentionButton(serverList) {
@@ -184,7 +210,7 @@ module.exports = {
                 tag: role.name.toLowerCase(),
                 discord_role_id: role.id
             };
-        
+
             serverList.unshift(mentionObj);
             return serverList;
         }
@@ -194,4 +220,3 @@ module.exports = {
     }
 
 };
-
