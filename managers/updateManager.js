@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 3:52:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 29th May 2024 12:56:30 am
+ * Last Modified: Wednesday, 29th May 2024 2:57:48 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -410,7 +410,7 @@ module.exports = {
 
         let toDeleteList = [];
         
-        await fs.readdirSync(`./vault/${pack.tag}/${backup}`).forEach(file => {
+        await fs.readdirSync(`./${pack.tag}/backup`).forEach(file => {
             toDeleteList.push(file);
         });
 
