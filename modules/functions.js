@@ -1,10 +1,10 @@
 /*
  * File: functions.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Saturday, 11th May 2024 4:13:53 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 1:55:59 am
+ * Last Modified: Wednesday, 29th May 2024 3:39:58 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -25,7 +25,7 @@ module.exports = {
         let folderContents = await fs.readdirSync(path);
         if (!folderContents.includes("mods")) {
             console.log("Mods folder not found! Removing parent folder...");
-            await this.removeParentFolder(`${path}/${folderContents[0]}`);
+            await module.exports.removeParentFolder(`${path}/${folderContents[0]}`);
         }
     },
 
