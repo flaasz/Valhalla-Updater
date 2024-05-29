@@ -1,10 +1,10 @@
 /*
  * File: send.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Monday, 27th May 2024 7:31:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 7:54:48 pm
+ * Last Modified: Wednesday, 29th May 2024 2:47:22 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -29,11 +29,11 @@ module.exports = {
         }
         try {
             const webhooks = await channel.fetchWebhooks();
-            const webhook = webhooks.find(wh => wh.token);
+            let webhook = webhooks.find(wh => wh.token);
 
             if (!webhook) {
                 console.log(`Creating webhook for channel ${channel.name}...`);
-                await channel.createWebhook({
+                webhook = await channel.createWebhook({
                     name: "Valhalla Updater",
                     avatar: client.user.displayAvatarURL(),
                 });
