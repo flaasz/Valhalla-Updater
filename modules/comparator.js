@@ -1,10 +1,10 @@
 /*
  * File: comparator.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Friday, 10th May 2024 7:42:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 1:32:09 pm
+ * Last Modified: Wednesday, 29th May 2024 2:01:34 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -38,14 +38,14 @@ module.exports = {
         res.diffSet.forEach(dif => {
             if (dif.state === "left") {
                 console.log(`Difference - delete: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, state: ${dif.state}`);
-                changeList.deletions.push(dif.relativePath + "\\" + dif.name1);
+                changeList.deletions.push(dif.relativePath + "/" + dif.name1);
             } else if (dif.state === "right") {
                 console.log(`Difference - add: ${dif.relativePath}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
-                changeList.additions.push(dif.relativePath + "\\" + dif.name2);
+                changeList.additions.push(dif.relativePath + "/" + dif.name2);
             } else if (dif.state === "equal") {} else {
                 console.log(`Difference - replace: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
-                changeList.deletions.push(dif.relativePath + "\\" + dif.name1);
-                changeList.additions.push(dif.relativePath + "\\" + dif.name2);
+                changeList.deletions.push(dif.relativePath + "/" + dif.name1);
+                changeList.additions.push(dif.relativePath + "/" + dif.name2);
             }
 
         });
@@ -72,13 +72,13 @@ module.exports = {
         res.diffSet.forEach(dif => {
             if (dif.state === "left") {
                 console.log(`Custom file: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, state: ${dif.state}`);
-                customChanges.customFiles.push(dif.relativePath + "\\" + dif.name1);
+                customChanges.customFiles.push(dif.relativePath + "/" + dif.name1);
             } else if (dif.state === "right") {
                 console.log(`Missing file: ${dif.relativePath}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
-                customChanges.missingFiles.push(dif.relativePath + "\\" + dif.name2);
+                customChanges.missingFiles.push(dif.relativePath + "/" + dif.name2);
             } else if (dif.state === "equal") {} else {
                 console.log(`Custom file - edited: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
-                customChanges.editedFiles.push(dif.relativePath + "\\" + dif.name2);
+                customChanges.editedFiles.push(dif.relativePath + "/" + dif.name2);
             }
 
         });
