@@ -4,7 +4,7 @@
  * File Created: Wednesday, 29th May 2024 7:30:52 pm
  * Author: flaasz
  * -----
- * Last Modified: Thursday, 30th May 2024 1:01:56 am
+ * Last Modified: Thursday, 30th May 2024 1:26:06 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -46,6 +46,7 @@ module.exports = {
         "interval": 1,
         "roleChannelId": "",
         "MentionRoleId": "",
+        "defaultEmojiId": "",
     },
 
     /**
@@ -126,7 +127,7 @@ module.exports = {
                 if (!emoji) {
                     await generateEmoji(server);
                     emoji = {};
-                    emoji.id = "1068771797878722560";
+                    emoji.id = options.defaultEmojiId;
                 }
                 let button = new ButtonBuilder()
                     .setCustomId(server.tag)
