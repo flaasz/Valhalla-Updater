@@ -1,17 +1,16 @@
 /*
  * File: schedulerManager.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Wednesday, 15th May 2024 10:14:14 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 10:05:41 pm
+ * Last Modified: Thursday, 30th May 2024 10:52:32 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
  */
 
 //TODO Restart scheduler with checks
-//TODO Role assignment!!!!
 //TODO Automated perms on ptero for team!
 
 
