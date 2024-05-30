@@ -1,15 +1,3 @@
-/*
- * File: .gitignore
- * Project: valhalla-updater
- * File Created: Friday, 10th May 2024 7:11:49 pm
- * Author: flaasz
- * -----
- * Last Modified: Thursday, 30th May 2024 11:09:51 pm
- * Modified By: flaasz
- * -----
- * Copyright 2024 flaasz
- */
-
 dir1
 dir2
 temp
