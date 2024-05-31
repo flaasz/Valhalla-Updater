@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 3:52:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 29th May 2024 7:38:06 pm
+ * Last Modified: Saturday, 1st June 2024 1:17:37 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -220,7 +220,7 @@ module.exports = {
             .replace("[NEWVERSION]", newVersionNumber)
             .replace("[OLDVERSION]", pack.modpack_version)
             .replace("[CHANGELOGURL]", `https://www.curseforge.com/minecraft/modpacks/${packData.slug}/files/${pack.newestFileID}`)
-            .replace("[PINGROLE]", pack.discord_role_id)
+            .replace("[PINGROLE]", `<@&${pack.discord_role_id}>`)
             .replace("[SUMMARY]", "");
 
         const updateWebhook = {
@@ -369,7 +369,7 @@ module.exports = {
             .replace("[NEWVERSION]", newVersionNumber)
             .replace("[OLDVERSION]", pack.modpack_version)
             .replace("[CHANGELOGURL]", `https://www.feed-the-beast.com/modpacks/${pack.modpackID}?tab=versions`)
-            .replace("[PINGROLE]", pack.discord_role_id)
+            .replace("[PINGROLE]", `<@&${pack.discord_role_id}>`)
             .replace("[SUMMARY]", "");
 
         const updateWebhook = {
