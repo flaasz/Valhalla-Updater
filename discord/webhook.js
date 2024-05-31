@@ -4,7 +4,7 @@
  * File Created: Monday, 27th May 2024 7:31:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 29th May 2024 7:41:03 pm
+ * Last Modified: Friday, 31st May 2024 4:34:42 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -28,7 +28,7 @@ module.exports = {
             return;
         }
 
-        let webhook = this.getWebhook(channelId);
+        let webhook = module.exports.getWebhook(channelId);
 
         webhook.send(message);
     },

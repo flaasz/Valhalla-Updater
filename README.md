@@ -15,24 +15,28 @@ Valhalla Updater is a versatile tool designed to simplify the process of checkin
 ## Installation
 
 1. Clone the repository:
+
    ```bash
-   git clone https://github.com/your_username/valhalla-updater.git
+   git clone https://github.com/flaasz/Valhalla-Updater.git
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Start it to generate config:
+
    ```bash
    npm start
    ```
 
 4. Customize `.env`, `./config/config.json` and `./config/messages.json` with your configuration details.
 
-##### [!] Currently available are only MongoDB and Pterodactyl. Please make sure the servers collection in MongoDB follows this structure:
-```json
+**[!] Currently available are only MongoDB and Pterodactyl. Please make sure the servers collection in MongoDB follows this structure**
+
+```js
 {
     tag: 'ske', //short tag of the pack preferably from ip, ie. ske.valhallamc.io
     discord_role_id: '', //id of the role on discord, if empty roleAssigner scheduler will create a role and update this field

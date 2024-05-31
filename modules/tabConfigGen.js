@@ -1,10 +1,10 @@
 /*
  * File: tabConfigGen.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Monday, 20th May 2024 11:54:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Sunday, 26th May 2024 9:04:54 pm
+ * Last Modified: Friday, 31st May 2024 4:36:05 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -40,6 +40,7 @@ module.exports = {
     }
 };
 
+module.exports.generateTabConfig();
 /*
 
   serverName:
