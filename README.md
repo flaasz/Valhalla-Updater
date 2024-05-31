@@ -17,7 +17,7 @@ Valhalla Updater is a versatile tool designed to simplify the process of checkin
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/your_username/valhalla-updater.git
+   git clone https://github.com/flaasz/Valhalla-Updater.git
    ```
 
 2. Install dependencies:
