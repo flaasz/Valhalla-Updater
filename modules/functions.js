@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 4:13:53 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 29th May 2024 3:39:58 pm
+ * Last Modified: Saturday, 1st June 2024 12:18:50 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -101,7 +101,7 @@ module.exports = {
      */
     getVersion: function (versionString) {
 
-        const versionRegex = /(\bv\d+[a-zA-Z]*\b|v\d+[a-zA-Z]*|\d+\.\d+\.\d+[a-zA-Z]?|\d+\.\d+[a-zA-Z]?)($|\s|\.zip)/g;
+        const versionRegex = /(\bv\d+[a-zA-Z]*\b|v\d+[a-zA-Z]*|\d+\.\d+\.\d+([a-zA-Z_][a-zA-Z]?)?|\d+\.\d+([a-zA-Z_][a-zA-Z]?)?)($|\s|\.zip)/g;
 
         let version = versionString.match(versionRegex);
         return version ? version[0].trim().replace(/\.zip$|v/g, '') : null;
