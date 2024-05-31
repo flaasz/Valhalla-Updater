@@ -4,7 +4,7 @@
  * File Created: Friday, 31st May 2024 12:08:03 am
  * Author: flaasz
  * -----
- * Last Modified: Friday, 31st May 2024 12:57:49 am
+ * Last Modified: Friday, 31st May 2024 2:12:34 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
+
 
 const envVars = ['MONGODB_URL', 'PTERODACTYL_APIKEY', 'DISCORD_TOKEN', 'CURSEFORGE_APIKEY'];
 
@@ -97,6 +98,10 @@ if (!fs.existsSync(path.join(__dirname, '../config/config.json')) || !fs.existsS
     generateConfigFiles();
 }
 
+
+const schedulerManager = require('../managers/schedulerManager');
+schedulerManager.loadSchedulers(true);
+
 let configFine = true;
 for (const key of envVars) {
     if (!process.env[key]) {
@@ -121,8 +126,10 @@ function checkConfig(config) {
 
     for (let key in config) {
 
+
         const value = config[key];
 
+        if (key === "active" && value === false ) break;
         if (typeof value === 'object' && value !== null) {
             checkConfig(value);
         } else {
