@@ -4,7 +4,7 @@
  * File Created: Thursday, 30th May 2024 11:29:57 pm
  * Author: flaasz
  * -----
- * Last Modified: Thursday, 30th May 2024 11:53:23 pm
+ * Last Modified: Friday, 31st May 2024 12:47:42 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -12,7 +12,6 @@
 
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 
 function logError(error) {
     const timestamp = new Date().toISOString();
@@ -34,8 +33,6 @@ function logError(error) {
         External: ${Math.round(process.memoryUsage().external / 1024 / 1024)} MB
     `.trim();
 
-    console.error(errorMessage);
-
     const logsDir = 'crash-logs';
     if (!fs.existsSync(logsDir)) {
         fs.mkdirSync(logsDir);
@@ -44,6 +41,16 @@ function logError(error) {
     const logFilePath = path.join(logsDir, `crash_${timestamp.split(".")[0].replace(/:/g, "-")}.log`);
     fs.writeFileSync(logFilePath, errorMessage);
 
+    const files = fs.readdirSync(logsDir)
+        .map(file => ({
+            file,
+            time: fs.statSync(path.join(logsDir, file)).mtime.getTime()
+        }))
+        .sort((a, b) => a.time - b.time);
+
+    if (files.length > 10) {
+        fs.unlinkSync(path.join(logsDir, files[0].file));
+    }
     process.exit(1);
 }
 

@@ -219,7 +219,9 @@ module.exports = {
         const updateMessageContent = updateMessage.replace("[PACKNAME]", pack.name)
             .replace("[NEWVERSION]", newVersionNumber)
             .replace("[OLDVERSION]", pack.modpack_version)
-            .replace("[CHANGELOGURL]", `https://www.curseforge.com/minecraft/modpacks/${packData.slug}/files/${pack.newestFileID}`);
+            .replace("[CHANGELOGURL]", `https://www.curseforge.com/minecraft/modpacks/${packData.slug}/files/${pack.newestFileID}`)
+            .replace("[PINGROLE]", pack.discord_role_id)
+            .replace("[SUMMARY]", "");
 
         const updateWebhook = {
             content: updateMessageContent,
@@ -366,7 +368,9 @@ module.exports = {
         const updateMessageContent = updateMessage.replace("[PACKNAME]", pack.name)
             .replace("[NEWVERSION]", newVersionNumber)
             .replace("[OLDVERSION]", pack.modpack_version)
-            .replace("[CHANGELOGURL]", `https://www.feed-the-beast.com/modpacks/${pack.modpackID}?tab=versions`);
+            .replace("[CHANGELOGURL]", `https://www.feed-the-beast.com/modpacks/${pack.modpackID}?tab=versions`)
+            .replace("[PINGROLE]", pack.discord_role_id)
+            .replace("[SUMMARY]", "");
 
         const updateWebhook = {
             content: updateMessageContent,

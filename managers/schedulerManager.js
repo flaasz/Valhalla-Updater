@@ -4,7 +4,7 @@
  * File Created: Wednesday, 15th May 2024 10:14:14 pm
  * Author: flaasz
  * -----
- * Last Modified: Thursday, 30th May 2024 10:52:32 pm
+ * Last Modified: Friday, 31st May 2024 2:06:42 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -20,7 +20,7 @@ const config = require('../config/config.json');
 const schedulerConfig = config.scheduler;
 
 module.exports = {
-    loadSchedulers: function () {
+    loadSchedulers: function (init = false) {
         const schedulersPath = path.join(__dirname, '../schedulers');
         const schedulerFiles = fs.readdirSync(schedulersPath).filter(file => file.endsWith('.js'));
 
@@ -40,7 +40,7 @@ module.exports = {
                     fs.writeFileSync(configPath, JSON.stringify(config, null, 4));
                 }
 
-                if (schedulerConfig[scheduler.name].active) {
+                if (schedulerConfig[scheduler.name].active && !init) {
                     activeSchedulers++;
                     console.log(`Starting ${scheduler.name} scheduler...`);
                     scheduler.start(schedulerConfig[scheduler.name]);
@@ -50,6 +50,6 @@ module.exports = {
             }
         }
 
-        console.log(`Loaded ${schedulers} (${activeSchedulers} active) schedulers!`);
+        if(!init) console.log(`Loaded ${schedulers} (${activeSchedulers} active) schedulers!`);
     }
 };
