@@ -4,7 +4,7 @@
  * File Created: Thursday, 30th May 2024 11:29:57 pm
  * Author: flaasz
  * -----
- * Last Modified: Friday, 31st May 2024 12:47:42 am
+ * Last Modified: Friday, 31st May 2024 4:47:44 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -12,6 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const exitOnError = require('../config/config.json').base.exitOnError;
 
 function logError(error) {
     const timestamp = new Date().toISOString();
@@ -50,6 +51,11 @@ function logError(error) {
 
     if (files.length > 10) {
         fs.unlinkSync(path.join(logsDir, files[0].file));
+    }
+
+    if (!exitOnError) {
+        console.error(`Error occurred! Check ${logFilePath} for more info.`);
+        return;
     }
     process.exit(1);
 }

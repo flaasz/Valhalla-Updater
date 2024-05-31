@@ -4,7 +4,7 @@
  * File Created: Friday, 31st May 2024 12:08:03 am
  * Author: flaasz
  * -----
- * Last Modified: Friday, 31st May 2024 2:12:34 am
+ * Last Modified: Friday, 31st May 2024 4:45:40 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -60,6 +60,9 @@ function generateConfigFiles() {
     });
 
     const configContent = {
+        "base": {
+            "exitOnError": true
+        },
         "discord": {
             "active": true,
             "announcementChannelId": "",
