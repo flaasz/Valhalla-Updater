@@ -1,10 +1,10 @@
 /*
  * File: mongo.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Wednesday, 15th May 2024 9:00:51 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 27th May 2024 11:54:21 pm
+ * Last Modified: Saturday, 1st June 2024 11:05:13 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -21,8 +21,6 @@ const {
 
 const mongoClient = new MongoClient(process.env.MONGODB_URL);
 
-const db = mongoClient.db(mongoDBName);
-
 module.exports = {
 
     /**
@@ -31,8 +29,10 @@ module.exports = {
      */
     getServers: async function () {
         await mongoClient.connect();
-        const serversCollection = db.collection(mongoDBserversCollection);
-        const serversArray = await serversCollection.find({}).toArray();
+        const serversArray = await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .find({}).toArray();
 
         //console.log(serversArray);
         mongoClient.close();
@@ -46,11 +46,12 @@ module.exports = {
      */
     updateServers: async function (modpackId, update) {
         await mongoClient.connect();
-        const serversCollection = db.collection(mongoDBserversCollection);
-
-        await serversCollection.updateMany({
-            modpackID: modpackId
-        }, update);
+        await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .updateMany({
+                modpackID: modpackId
+            }, update);
 
         mongoClient.close();
     },
@@ -62,11 +63,12 @@ module.exports = {
      */
     updateServer: async function (serverId, update) {
         await mongoClient.connect();
-        const serversCollection = db.collection(mongoDBserversCollection);
-
-        await serversCollection.updateOne({
-            serverId: serverId
-        }, update);
+        await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .updateOne({
+                serverId: serverId
+            }, update);
 
         mongoClient.close();
     },
