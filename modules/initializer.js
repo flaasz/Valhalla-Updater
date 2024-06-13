@@ -4,7 +4,7 @@
  * File Created: Friday, 31st May 2024 12:08:03 am
  * Author: flaasz
  * -----
- * Last Modified: Friday, 31st May 2024 4:45:40 pm
+ * Last Modified: Friday, 14th June 2024 12:40:39 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -15,7 +15,7 @@ const path = require('path');
 require('dotenv').config();
 
 
-const envVars = ['MONGODB_URL', 'PTERODACTYL_APIKEY', 'DISCORD_TOKEN', 'CURSEFORGE_APIKEY'];
+const envVars = ['MONGODB_URL', 'PTERODACTYL_APIKEY', 'DISCORD_TOKEN', 'CURSEFORGE_APIKEY', 'VELOCITY_METRICS_URL', 'KOFI_SECRET'];
 
 
 function generateEnvFile() {
@@ -46,7 +46,7 @@ function generateConfigFiles() {
     const messagesContent = {
         alertScheduledUpdate: "tellraw @a {\"text\":\"This server has begun an automated update process. Please update your client to v[NEWVERSION]. This process can take up to 15 minutes!\",\"color\":\"red\"}",
         alertScheduledReboot: "tellraw @a {\"text\":\"This server has begun a scheduled reboot process. Please disconnect. This process can take up to 5 minutes!\",\"color\":\"red\"}",
-        alertCakeDrop: "tellraw @a {\"text\":\"Cake drop!\",\"color\":\"green\"}",
+        alertCakeDrop: "tellraw [RECIEVERS] {\"text\":\"Cake drop!\",\"color\":\"green\"}",
         updateMessage: "# <a:Update:1242446803345866883><a:U_:1242446802083385426><a:pd:1242446800586280960><a:ate:1242446799093104650>\n\nHey! **[PACKNAME]** server has been updated! \n## v[OLDVERSION] -> v[NEWVERSION]\n\n[SUMMARY]\nLearn more here: [Changelog](<[CHANGELOGURL]>)\n\nHaving issues? Make a ticket on <#1113399230359408711>. \n\n[PINGROLE]"
     };
 
@@ -77,6 +77,10 @@ function generateConfigFiles() {
             "active": true,
             "mongoDBName": "",
             "mongoDBserversCollection": ""
+        },
+        "webApi": {
+            "active": true,
+            "port": 3000
         },
         "scheduler": {}
     };

@@ -1,10 +1,10 @@
 /*
  * File: execute.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Friday, 24th May 2024 4:40:44 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 7:19:59 pm
+ * Last Modified: Thursday, 13th June 2024 9:52:01 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -19,12 +19,14 @@ const {
 const {
     sendCommand
 } = require('../../modules/pterodactyl');
-
+const {
+    velocityID
+} = require("../../config/config.json").pterodactyl;
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('execute')
         .setDescription('Execute a command on the server!')
-        .setDefaultMemberPermissions(0)
+        .setDefaultMemberPermissions(16)
         .addStringOption(option =>
             option.setName('server')
             .setDescription('Name of the server to execute the command on')
@@ -38,7 +40,7 @@ module.exports = {
     async autocomplete(interaction) {
         const focusedValue = interaction.options.getFocused();
         const serverList = await getServers();
-        const choices = ["all"];
+        const choices = ["all", "Velocity"];
 
         for (const server of serverList) {
             choices.push(`${server.name}`);
@@ -65,6 +67,8 @@ module.exports = {
             }
             await interaction.reply(`Sent command to **all** servers!`);
             return;
+        } else if (query === 'Velocity') {
+            sendCommand(velocityID, command);
         } else {
             const server = serverList.find(server => server.name === query || server.tag === query.toLowerCase());
             if (!server) {

@@ -4,7 +4,7 @@
  * File Created: Wednesday, 15th May 2024 9:00:51 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 1st June 2024 11:05:13 pm
+ * Last Modified: Thursday, 13th June 2024 4:14:10 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -16,7 +16,8 @@ const {
 require('dotenv').config();
 const {
     mongoDBName,
-    mongoDBserversCollection
+    mongoDBserversCollection,
+    mongoDBshardsCollection
 } = require("../config/config.json").mongodb;
 
 const mongoClient = new MongoClient(process.env.MONGODB_URL);
@@ -38,6 +39,23 @@ module.exports = {
         mongoClient.close();
         return serversArray;
     },
+
+    /**
+     * Gets all current shards data from MongoDB.
+     * @returns Array of objects containing the shard data.
+     */
+        getShards: async function () {
+            await mongoClient.connect();
+            const shardsArray = await mongoClient
+                .db(mongoDBName)
+                .collection(mongoDBshardsCollection)
+                .find({}).toArray();
+    
+            //console.log(shardsArray);
+            mongoClient.close();
+            return shardsArray;
+        },
+
 
     /**
      * Update the data of multiple servers in MongoDB.
