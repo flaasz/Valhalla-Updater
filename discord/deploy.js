@@ -1,10 +1,10 @@
 /*
  * File: deploy.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Friday, 17th May 2024 12:28:43 am
  * Author: flaasz
  * -----
- * Last Modified: Sunday, 26th May 2024 10:50:50 pm
+ * Last Modified: Thursday, 13th June 2024 5:05:12 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -45,8 +45,6 @@ const rest = new REST().setToken(token);
 module.exports = {
     deployCommands: async function (clientId) {
         try {
-            console.log(`Started refreshing ${commands.length} slash commands.`);
-
             // The put method is used to fully refresh all commands in the guild with the current set
             const data = await rest.put(
                 Routes.applicationCommands(clientId), {
@@ -54,7 +52,7 @@ module.exports = {
                 },
             );
 
-            console.log(`Successfully reloaded ${data.length} slash commands.`);
+            console.log(`Successfully loaded ${data.length} slash commands.`);
         } catch (error) {
             // And of course, make sure you catch and log any errors!
             console.error(error);

@@ -4,7 +4,7 @@
  * File Created: Monday, 27th May 2024 8:27:53 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 1st June 2024 11:20:22 pm
+ * Last Modified: Thursday, 13th June 2024 11:15:24 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -45,6 +45,7 @@ module.exports = {
         console.log("Checking for updates...");
 
         let servers = await mongo.getServers();
+        let numberOfUpdates = 0;
 
         for (let server of servers) {
             let newestUpdateId = 0;
@@ -77,6 +78,7 @@ module.exports = {
 
                 console.log(`Update found for ${server.name}! (v${server.modpack_version} -> v${newVersionNumber})`);
                 updateRequired = true;
+                numberOfUpdates++;
 
                 if (active && server.newestFileID != newestUpdateId) {
                     const embed = new EmbedBuilder()
@@ -109,5 +111,7 @@ module.exports = {
             await mongo.updateServers(server.modpackID, update);
             //console.log(newestUpdateId);
         }
+
+        return numberOfUpdates;
     }
 };
