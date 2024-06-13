@@ -4,7 +4,7 @@
  * File Created: Friday, 14th June 2024 12:29:18 am
  * Author: flaasz
  * -----
- * Last Modified: Friday, 14th June 2024 1:18:04 am
+ * Last Modified: Friday, 14th June 2024 1:32:47 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -13,7 +13,7 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-
+const webApiPort = require("../config/config.json").webApi.port;
 app.use(bodyParser.urlencoded({
     extended: true
 }));
@@ -73,7 +73,6 @@ module.exports = {
             return;
         });
 
-        const webApiPort = 3000;
 
         app.listen(webApiPort, function () {
             console.log(`Web Api Server online on port ${webApiPort}`);
