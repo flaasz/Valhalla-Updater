@@ -4,7 +4,7 @@
  * File Created: Monday, 27th May 2024 8:35:46 pm
  * Author: flaasz
  * -----
- * Last Modified: Friday, 14th June 2024 10:42:54 pm
+ * Last Modified: Friday, 14th June 2024 10:46:46 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -35,7 +35,7 @@ module.exports = {
      */
     start: async function (options) {
         //dropCake();
-        setInterval(this.dropCake(options), options.interval * 60 * 1000);
+        setInterval(() => this.dropCake(options), options.interval * 60 * 1000);
     },
 
     dropCake: async function (options) {
