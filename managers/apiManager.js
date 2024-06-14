@@ -4,7 +4,7 @@
  * File Created: Friday, 14th June 2024 12:29:18 am
  * Author: flaasz
  * -----
- * Last Modified: Friday, 14th June 2024 2:07:59 am
+ * Last Modified: Friday, 14th June 2024 2:10:06 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -47,12 +47,12 @@ module.exports = {
                 if (obj.verification_token != kofiToken) return;
                 if (obj.message) {
                     output.content = `**${obj.from_name}** just donated **€${obj.amount}**: *${obj.message}*`;
-                    pterodactyl.sendCommand(config.pterodactyl.velocityID, `say [Ko-fi] ${obj.from_name} just donated €${obj.amount}: ${obj.message}`);
-                    console.log(`alert [Ko-fi] ${obj.from_name} just donated €${obj.amount}: ${obj.message}`);
+                    pterodactyl.sendCommand(config.pterodactyl.velocityID, `alert [Ko-fi] ${obj.from_name} just donated €${obj.amount}: ${obj.message}`);
+                    console.log(`[Ko-fi] ${obj.from_name} just donated €${obj.amount}: ${obj.message}`);
                 } else {
                     output.content = `**${obj.from_name}** just donated **€${obj.amount}**!`;
-                    pterodactyl.sendCommand(config.pterodactyl.velocityID, `say [Ko-fi] ${obj.from_name} just donated €${obj.amount}!`);
-                    console.log(`alert [Ko-fi] ${obj.from_name} just donated €${obj.amount}!`);
+                    pterodactyl.sendCommand(config.pterodactyl.velocityID, `alert [Ko-fi] ${obj.from_name} just donated €${obj.amount}!`);
+                    console.log(`[Ko-fi] ${obj.from_name} just donated €${obj.amount}!`);
                 }
                 webhook.sendWebhook(config.discord.chatChannelId, output);
 
