@@ -1,10 +1,10 @@
 /*
  * File: curseforge.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Saturday, 11th May 2024 7:27:27 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 1:09:00 am
+ * Last Modified: Friday, 14th June 2024 10:52:31 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -67,7 +67,7 @@ module.exports = {
                 headers: header
             });
             //console.log(response);
-            if (!response.data.data.serverPackFileId) return versionId;
+            if (!response.data.data.serverPackFileId) return null;
             return response.data.data.serverPackFileId;
         } catch (error) {
             console.error(error);
