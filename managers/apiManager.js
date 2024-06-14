@@ -4,7 +4,7 @@
  * File Created: Friday, 14th June 2024 12:29:18 am
  * Author: flaasz
  * -----
- * Last Modified: Friday, 14th June 2024 1:59:35 am
+ * Last Modified: Friday, 14th June 2024 2:07:59 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -16,7 +16,7 @@ const bodyParser = require('body-parser');
 const webhook = require('../discord/webhook');
 const webApiPort = require("../config/config.json").webApi.port;
 require('dotenv').config();
-const kofiToken = process.env.KOFI_TOKEN;
+const kofiToken = process.env.KOFI_SECRET;
 const config = require("../config/config.json");
 const pterodactyl = require('../modules/pterodactyl');
 app.use(bodyParser.urlencoded({
@@ -34,7 +34,7 @@ module.exports = {
         };
 
         app.post('/post', async function (req, res) {
-            console.log(req.body.data);
+            //console.log(req.body.data);
             const data = req.body.data;
             if (!data) return res.json({
                 success: true
@@ -43,7 +43,7 @@ module.exports = {
             try {
                 //console.log(data);
                 const obj = JSON.parse(data);
-                console.log(obj);
+                //console.log(obj);
                 if (obj.verification_token != kofiToken) return;
                 if (obj.message) {
                     output.content = `**${obj.from_name}** just donated **€${obj.amount}**: *${obj.message}*`;
