@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 6:17:20 pm
  * Author: flaasz
  * -----
- * Last Modified: Friday, 14th June 2024 1:45:16 am
+ * Last Modified: Friday, 14th June 2024 2:19:54 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -18,4 +18,4 @@ const discord = require("./discord/bot");
 
 discord.launchBot();
 api.startServer();
-//scheduler.loadSchedulers();
+scheduler.loadSchedulers();
