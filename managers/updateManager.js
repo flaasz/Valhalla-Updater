@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 3:52:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 1st June 2024 1:17:37 am
+ * Last Modified: Friday, 14th June 2024 11:58:58 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -95,6 +95,12 @@ module.exports = {
 
         const newestServerPackID = await curseforge.getServerFileId(pack.modpackID, pack.newestFileID);
         const currentServerPackID = await curseforge.getServerFileId(pack.modpackID, pack.fileID);
+
+        if (newestServerPackID === null || currentServerPackID === null) {
+            progressLog += `\n- Server pack not found. Aborting update.`;
+            await interaction.edit(progressLog);
+            return;
+        }
 
         const newestServerpackURL = await curseforge.getFileLink(pack.modpackID, newestServerPackID);
         const currentServerPackURL = await curseforge.getFileLink(pack.modpackID, currentServerPackID);
