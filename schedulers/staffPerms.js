@@ -4,7 +4,7 @@
  * File Created: Wednesday, 3rd July 2024 9:36:20 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 3rd July 2024 10:20:12 pm
+ * Last Modified: Wednesday, 3rd July 2024 10:42:24 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -56,9 +56,23 @@ module.exports = {
             //console.log(subUsers.data);
             for (let staffMail of options.staffMailList) {
 
-                if (subUsers.data.some(user => user.attributes.email === staffMail)) {
+                const user = subUsers.data.find(user => user.attributes.email === staffMail);
+                //console.log(user);
+
+                if (user) {
+                    if (options.staffPermissions.every(permission => user.attributes.permissions.includes(permission))) {
+                        continue;
+                    } else {
+                        console.log(`User ${staffMail} has missing permissions for server ${server.name}! Updating...`);
+                        await pterodactyl.updateSubUser(server.serverId, user.attributes.uuid, {
+                            "permissions": options.staffPermissions
+                        });
+                        await functions.sleep(1000);
+                    }
                     continue;
                 }
+
+                await functions.sleep(300);
                 console.log(`User ${staffMail} does not have permissions for server ${server.name}! Adding...`);
 
                 const userBody = {
@@ -68,9 +82,8 @@ module.exports = {
 
                 await pterodactyl.createSubUser(server.serverId, userBody);
 
-                await functions.sleep(300);
             }
         }
+    }
 
-    },
 };

@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 8:15:21 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 3rd July 2024 10:11:10 pm
+ * Last Modified: Wednesday, 3rd July 2024 10:37:31 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -239,6 +239,24 @@ module.exports = {
     createSubUser: async function (serverID, subUserData) {
         try {
             let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/users`, subUserData, {
+                headers: header
+            });
+            //console.log(response);
+            return response.data;
+        } catch (error) {
+            console.error(error.response.data);
+        }
+    },
+
+    /**
+     * Updates a subuser on the server.
+     * @param {*} serverID Id of the server on Pterodactyl.
+     * @param {*} subUserID Id of the subuser on Pterodactyl.
+     * @param {*} subUserData Object containing the updated subuser data.
+     */
+    updateSubUser: async function (serverID, subUserID, subUserData) {
+        try {
+            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/users/${subUserID}`, subUserData, {
                 headers: header
             });
             //console.log(response);
