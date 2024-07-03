@@ -4,7 +4,7 @@
  * File Created: Monday, 20th May 2024 11:54:16 pm
  * Author: flaasz
  * -----
- * Last Modified: Friday, 31st May 2024 4:36:05 pm
+ * Last Modified: Saturday, 15th June 2024 1:58:55 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -89,7 +89,7 @@ function toSmallCaps(input) {
         'p': 'ᴘ',
         'q': 'ǫ',
         'r': 'ʀ',
-        's': 's',
+        's': 'ꜱ',
         't': 'ᴛ',
         'u': 'ᴜ',
         'v': 'ᴠ',
@@ -125,7 +125,7 @@ function getColorCode(color) {
         green: '&a',
         aqua: '&b',
         red: '&c',
-        purple: '&d',
+        light_purple: '&d',
         yellow: '&e',
         white: '&f'
     };
