@@ -1,10 +1,10 @@
 /*
  * File: pterodactyl.js
- * Project: Valhalla-Updater
+ * Project: valhalla-updater
  * File Created: Saturday, 11th May 2024 8:15:21 pm
  * Author: flaasz
  * -----
- * Last Modified: Tuesday, 28th May 2024 10:50:21 pm
+ * Last Modified: Wednesday, 3rd July 2024 10:11:10 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -210,6 +210,41 @@ module.exports = {
             if (error.response.status != 502) {
                 console.log(error.response.data);
             }
+        }
+    },
+
+    /**
+     * Lists all subusers of a server.
+     * @param {*} serverID Id of the server on Pterodactyl.
+     * @returns Object containing the list of subusers.
+     */
+    listUsers: async function (serverID) {
+        try {
+            let response = await axios.get(`${pterodactylHostName}api/client/servers/${serverID}/users`, {
+                headers: header
+            });
+            //console.log(response);
+            return response.data;
+        }
+        catch (error) {
+            console.error(error.response.data);
+        }
+    }, 
+
+    /**
+     * Creates a subuser on the server.
+     * @param {*} serverID Id of the server on Pterodactyl.
+     * @param {*} subUserData Object containing the subuser data.
+     */
+    createSubUser: async function (serverID, subUserData) {
+        try {
+            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/users`, subUserData, {
+                headers: header
+            });
+            //console.log(response);
+            return response.data;
+        } catch (error) {
+            console.error(error.response.data);
         }
     },
 

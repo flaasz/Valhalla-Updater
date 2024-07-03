@@ -4,7 +4,7 @@
  * File Created: Friday, 24th May 2024 4:40:44 pm
  * Author: flaasz
  * -----
- * Last Modified: Saturday, 15th June 2024 3:47:08 am
+ * Last Modified: Saturday, 15th June 2024 3:51:33 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -70,7 +70,7 @@ module.exports = {
         if (query === 'all') {
             for (const server of serverList) {
                 sendCommand(server.serverId, command);
-                console.log(`Sent command to ${server.name}`);
+                //console.log(`Sent command to ${server.name}`);
             }
             await interaction.reply(`Sent \`${command}\` to **all** servers! 🚀`);
             return;
@@ -89,7 +89,7 @@ module.exports = {
             await interaction.reply(reply);
 
             let response = await sendAdvancedCommand(server.serverId, command);
-            console.log(response);
+            //console.log(response);
             if (response === "") {
                 await interaction.editReply(reply + "\n **The server did not respond!**");
             } else
@@ -130,7 +130,7 @@ async function sendAdvancedCommand(serverId, command) {
 
         socket.on('console_output', (output) => {
             output = output.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, "");
-            console.log("Received output:", output);
+            //console.log("Received output:", output);
 
             const headerRegex = /\[\d\d:\d\d:\d\d\] \[Server thread\/INFO] \[minecraft\/MinecraftServer\]: |\[\d\d:\d\d:\d\d\] \[Server thread\/INFO]: |\[\d\d:\d\d:\d\d\] \[Server thread\/INFO] \[minecraft\/DedicatedServer\]: /gm;
 
