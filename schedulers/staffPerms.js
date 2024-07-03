@@ -4,7 +4,7 @@
  * File Created: Wednesday, 3rd July 2024 9:36:20 pm
  * Author: flaasz
  * -----
- * Last Modified: Wednesday, 3rd July 2024 10:18:57 pm
+ * Last Modified: Wednesday, 3rd July 2024 10:20:12 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -21,6 +21,7 @@ module.exports = {
         "interval": 24,
         "staffMailList": [],
         "staffPermissions": [
+            "control.console",
             "control.start",
             "control.stop",
             "control.restart",
