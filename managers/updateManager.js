@@ -4,7 +4,7 @@
  * File Created: Saturday, 11th May 2024 3:52:12 pm
  * Author: flaasz
  * -----
- * Last Modified: Friday, 14th June 2024 11:58:58 pm
+ * Last Modified: Thursday, 25th July 2024 5:56:15 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -47,7 +47,9 @@ const {
     announcementChannelId
 } = require("../config/config.json").discord;
 
-let newpack = { //reference
+
+/*  REFERENCE  */
+let newpack = {
     //_id: new ObjectId('6638d513fb984056c222f480'),
     hostname: '',
     port: 10004,
@@ -71,6 +73,7 @@ let newpack = { //reference
     platform: 'feedthebeast',
     requiresUpdate: false
 };
+/*  REFERENCE  */
 
 module.exports = {
 
@@ -170,7 +173,12 @@ module.exports = {
         for (let f of overWrites) {
             printOverWrite += `\n - ${f}`;
         }
-        progressLog += `\n- **Overwrites**: ${overWrites.length} files: ${printOverWrite}`;
+
+        if (printOverWrite.length > 700) {
+            progressLog += `\n- **Overwrites**: ${overWrites.length} files: Too many to list.`;
+        } else {
+            progressLog += `\n- **Overwrites**: ${overWrites.length} files: ${printOverWrite}`;
+        }
         await interaction.edit(progressLog);
 
         progressLog += `\n- Merging changes...`;
@@ -263,7 +271,7 @@ module.exports = {
         const oldManifest = await modpacksch.getFTBPackManifest(pack.modpackID, pack.fileID);
 
         rmRecursive(`./${pack.tag}`);
-        
+
         await pterodactyl.sendCommand(pack.serverId, alert);
 
         let toCompressList = [];
@@ -285,7 +293,7 @@ module.exports = {
         progressLog += ` Done!\n- Compressing and downloading current server files...`;
         await interaction.edit(progressLog);
         const compress = await pterodactyl.compressFile(pack.serverId, toCompressList);
-        
+
         const downloadLink = await pterodactyl.getDownloadLink(pack.serverId, compress);
         await download(downloadLink, `./vault/${pack.tag}/${pack.tag}_${pack.modpack_version}_${pack.fileID}.tar.gz`);
 
@@ -309,7 +317,7 @@ module.exports = {
 
         const customChanges = await comparator.findCustomManifestChanges(currentManifest, oldFilelist);
         const changeList = await comparator.findManifestChanges(oldFilelist, newFilelist);
-        
+
         progressLog += ` Done!\n- **Custom files**: ${customChanges.customFiles.length}, **Missing files**: ${customChanges.missingFiles.length}, **Edited files**: ${customChanges.editedFiles.length}`;
         progressLog += `\n- **Files to delete**: ${changeList.deletions.length}, **Files to add**: ${changeList.additions.length}`;
         const overWrites = customChanges.editedFiles.filter(file => changeList.additions.includes(file));
@@ -318,7 +326,12 @@ module.exports = {
         for (let f of overWrites) {
             printOverWrite += `\n - ${f}`;
         }
-        progressLog += `\n- **Overwrites**: ${overWrites.length} files: ${printOverWrite}`;
+
+        if (printOverWrite.length > 700) {
+            progressLog += `\n- **Overwrites**: ${overWrites.length} files: Too many to list.`;
+        } else {
+            progressLog += `\n- **Overwrites**: ${overWrites.length} files: ${printOverWrite}`;
+        }
         await interaction.edit(progressLog);
 
         progressLog += `\n- Merging changes...`;
@@ -419,13 +432,13 @@ module.exports = {
         await interaction.edit(progressLog);
 
         let toDeleteList = [];
-        
+
         await fs.readdirSync(`./${pack.tag}/backup`).forEach(file => {
             toDeleteList.push(file);
         });
 
         // DANGER ZONE - LINES BELOW MODIFY THE SERVER FILES ON LIVE BRANCH
-        
+
         await pterodactyl.deleteFile(pack.serverId, toDeleteList);
         await sleep(1000);
 
