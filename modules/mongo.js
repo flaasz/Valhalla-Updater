@@ -4,14 +4,15 @@
  * File Created: Wednesday, 15th May 2024 9:00:51 pm
  * Author: flaasz
  * -----
- * Last Modified: Thursday, 13th June 2024 4:14:10 pm
+ * Last Modified: Thursday, 25th July 2024 5:49:53 pm
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
  */
 
 const {
-    MongoClient
+    MongoClient,
+    Long
 } = require('mongodb');
 require('dotenv').config();
 const {
@@ -44,18 +45,52 @@ module.exports = {
      * Gets all current shards data from MongoDB.
      * @returns Array of objects containing the shard data.
      */
-        getShards: async function () {
-            await mongoClient.connect();
-            const shardsArray = await mongoClient
-                .db(mongoDBName)
-                .collection(mongoDBshardsCollection)
-                .find({}).toArray();
-    
-            //console.log(shardsArray);
-            mongoClient.close();
-            return shardsArray;
-        },
+    getShards: async function () {
+        await mongoClient.connect();
+        const shardsArray = await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBshardsCollection)
+            .find({}).toArray();
 
+        //console.log(shardsArray);
+        mongoClient.close();
+        return shardsArray;
+    },
+
+
+    /**
+     * Gets all tickets user closed or participated in by user from MongoDB.
+     * @param {*} id Id of the user.
+     * @param {*} username Username of the user.
+     * @returns Array of objects containing the tickets data.
+     */
+    getTickets: async function (id, username) {
+        await mongoClient.connect();
+        const ticketsData = await mongoClient
+            .db(mongoDBName)
+            .collection('tickets');
+        let array = await ticketsData.find({
+            $or: [{
+                closed_by: parseInt(id)
+            }, {
+                closed_by: new Long(id)
+            }, {
+                closed_by_name: username
+            }]
+        }).toArray();
+        let contr = await ticketsData.find({
+            [`users_involved.${id}`]: {
+                $exists: true
+            }
+        }).toArray();
+        //console.log(array);
+
+        let results = [];
+        results[0] = array;
+        results[1] = contr;
+        mongoClient.close();
+        return results;
+    },
 
     /**
      * Update the data of multiple servers in MongoDB.
