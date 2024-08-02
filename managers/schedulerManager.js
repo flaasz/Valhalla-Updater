@@ -31,7 +31,7 @@ module.exports = {
             const filePath = path.join(schedulersPath, file);
             const scheduler = require(filePath);
 
-            if ('name' in scheduler && 'start' in scheduler || 'defaultConfig' in scheduler) {
+            if ('name' in scheduler && 'start' in scheduler && 'defaultConfig' in scheduler) {
                 if (!schedulerConfig[scheduler.name]) {
                     console.log(`No config found for ${scheduler.name} scheduler! Generating default config...`);
                     schedulerConfig[scheduler.name] = scheduler.defaultConfig;
@@ -51,5 +51,14 @@ module.exports = {
         }
 
         if(!init) console.log(`Loaded ${schedulers} (${activeSchedulers} active) schedulers!`);
+    },
+
+    getRebootStats: async function (serverId) {
+        const stats = await mongo.getRebootStats(serverId);
+        return {
+            totalReboots: stats.totalReboots || 0,
+            lastReboot: stats.rebootHistory ? stats.rebootHistory[stats.rebootHistory.length - 1] : null,
+            rebootHistory: stats.rebootHistory || []
+        };
     }
 };

@@ -46,6 +46,24 @@ module.exports = {
     },
 
     /**
+     * Sends a command to the server.
+     * @param {string} serverID Id of the server on Pterodactyl.
+     * @param {string} command Command to be sent.
+     */
+    sendCommand: async function (serverID, command) {
+        try {
+            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/command`, {
+                command: command
+            }, {
+                headers: header
+            });
+            return response.data;
+        } catch (error) {
+            console.error(error.response.data);
+        }
+    },
+
+    /**
      * Gets the one-time download link of a file.
      * @param {string} serverID Id of the server on Pterodactyl.
      * @param {string} path Path to the file to download on Pterodactyl.

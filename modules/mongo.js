@@ -31,14 +31,120 @@ module.exports = {
      */
     getServers: async function () {
         await mongoClient.connect();
+        const shardsArray = await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBshardsCollection)
+            .find({}).toArray();
+
         const serversArray = await mongoClient
             .db(mongoDBName)
             .collection(mongoDBserversCollection)
             .find({}).toArray();
 
-        //console.log(serversArray);
+        const combinedArray = shardsArray.map(shard => {
+            const serverInfo = serversArray.find(server => server._id.toString() === shard.server.toString());
+            return { ...shard, ...serverInfo };
+        });
+
         mongoClient.close();
-        return serversArray;
+        return combinedArray;
+    },
+
+    /**
+     * Gets reboot statistics for a server.
+     * @param {string} serverId Id of the server.
+     * @returns Object containing reboot statistics.
+     */
+    getRebootStats: async function (serverId) {
+        await mongoClient.connect();
+        const server = await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .findOne({ serverId: serverId }, { projection: { totalReboots: 1, rebootHistory: 1 } });
+        mongoClient.close();
+        return server;
+    },
+
+    /**
+     * Gets CPU usage history for a server.
+     * @param {string} serverId Id of the server.
+     * @returns Array of CPU usage entries.
+     */
+    getCPUHistory: async function (serverId) {
+        await mongoClient.connect();
+        const server = await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .findOne({ serverId: serverId });
+        mongoClient.close();
+        return server.cpuHistory || [];
+    },
+
+    /**
+     * Updates CPU usage history for a server.
+     * @param {string} serverId Id of the server.
+     * @param {Array} cpuHistory Array of CPU usage entries.
+     */
+    updateCPUHistory: async function (serverId, cpuHistory) {
+        await mongoClient.connect();
+        await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .updateOne(
+                { serverId: serverId },
+                { $set: { cpuHistory: cpuHistory } }
+            );
+        mongoClient.close();
+    },
+
+    /**
+     * Logs a reboot event for a server.
+     * @param {string} serverId Id of the server.
+     */
+    logReboot: async function (serverId, reason, duration) {
+        await mongoClient.connect();
+        await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .updateOne(
+                { serverId: serverId },
+                { 
+                    $push: { 
+                        rebootHistory: { 
+                            timestamp: new Date(),
+                            reason: reason,
+                            duration: duration
+                        } 
+                    },
+                    $inc: { totalReboots: 1 }
+                }
+            );
+        mongoClient.close();
+    },
+
+    getRebootStats: async function (serverId) {
+        await mongoClient.connect();
+        const server = await mongoClient
+            .db(mongoDBName)
+            .collection(mongoDBserversCollection)
+            .findOne(
+                { serverId: serverId },
+                { projection: { totalReboots: 1, rebootHistory: { $slice: -30 } } }
+            );
+        mongoClient.close();
+
+        const rebootHistory = server.rebootHistory || [];
+        const totalReboots = server.totalReboots || 0;
+        const lastReboot = rebootHistory[rebootHistory.length - 1];
+        const averageDuration = rebootHistory.reduce((sum, reboot) => sum + (reboot.duration || 0), 0) / rebootHistory.length;
+
+        return {
+            totalReboots,
+            lastReboot,
+            averageDuration,
+            rebootHistory,
+            rebootFrequency: totalReboots / (30 * 24 * 60 * 60 * 1000) * 1000 * 60 * 60 * 24 // Reboots per day
+        };
     },
 
     /**
