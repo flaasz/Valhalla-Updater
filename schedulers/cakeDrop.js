@@ -4,7 +4,7 @@
  * File Created: Monday, 27th May 2024 8:35:46 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 16th September 2024 1:25:12 am
+ * Last Modified: Monday, 16th September 2024 1:31:16 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -59,7 +59,7 @@ module.exports = {
                 for (let player of playerData[serverName]) {
                     if (require("../config/config.json").scheduler.cakeDrop.exclude.includes(player)) continue;
                     await pterodactyl.sendCommand(server.serverId, alertCakeDrop.replace("[RECIEVERS]", player));
-                    if (servers.serverId === "dff4e4d4") {
+                    if (server.serverId === "dff4e4d4") {
                         await pterodactyl.sendCommand(server.serverId, `give ${player} tfc:cake ${cakeAmount}`);
 
                     } else {
@@ -89,7 +89,7 @@ module.exports = {
             for (let player of playerData[serverName]) {
                 if (require("../config/config.json").scheduler.cakeDrop.exclude.includes(player)) continue;
                 await pterodactyl.sendCommand(server.serverId, alertCakeDrop.replace("[RECIEVERS]", player));
-                if (servers.serverId === "dff4e4d4") {
+                if (server.serverId === "dff4e4d4") {
                     await pterodactyl.sendCommand(server.serverId, `give ${player} tfc:cake ${cakeAmount}`);
 
                 } else {
