@@ -4,7 +4,7 @@
  * File Created: Monday, 27th May 2024 8:35:46 pm
  * Author: flaasz
  * -----
- * Last Modified: Monday, 16th September 2024 1:21:41 am
+ * Last Modified: Monday, 16th September 2024 1:25:12 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -96,7 +96,6 @@ module.exports = {
                     await pterodactyl.sendCommand(server.serverId, `give ${player} minecraft:cake ${cakeAmount}`);
                 }
                 totalAmount += cakeAmount;
-                ``
                 totalPlayers++;
                 await functions.sleep(100);
             }
