@@ -4,7 +4,7 @@
  * File Created: Monday, 27th May 2024 8:35:46 pm
  * Author: flaasz
  * -----
- * Last Modified: Sunday, 30th June 2024 11:34:47 pm
+ * Last Modified: Monday, 16th September 2024 1:21:41 am
  * Modified By: flaasz
  * -----
  * Copyright 2024 flaasz
@@ -59,7 +59,12 @@ module.exports = {
                 for (let player of playerData[serverName]) {
                     if (require("../config/config.json").scheduler.cakeDrop.exclude.includes(player)) continue;
                     await pterodactyl.sendCommand(server.serverId, alertCakeDrop.replace("[RECIEVERS]", player));
-                    await pterodactyl.sendCommand(server.serverId, `give ${player} minecraft:cake ${cakeAmount}`);
+                    if (servers.serverId === "dff4e4d4") {
+                        await pterodactyl.sendCommand(server.serverId, `give ${player} tfc:cake ${cakeAmount}`);
+
+                    } else {
+                        await pterodactyl.sendCommand(server.serverId, `give ${player} minecraft:cake ${cakeAmount}`);
+                    }
                     totalAmount += cakeAmount;
                     totalPlayers++;
                     await functions.sleep(100);
@@ -84,8 +89,14 @@ module.exports = {
             for (let player of playerData[serverName]) {
                 if (require("../config/config.json").scheduler.cakeDrop.exclude.includes(player)) continue;
                 await pterodactyl.sendCommand(server.serverId, alertCakeDrop.replace("[RECIEVERS]", player));
-                await pterodactyl.sendCommand(server.serverId, `give ${player} minecraft:cake ${cakeAmount}`);
+                if (servers.serverId === "dff4e4d4") {
+                    await pterodactyl.sendCommand(server.serverId, `give ${player} tfc:cake ${cakeAmount}`);
+
+                } else {
+                    await pterodactyl.sendCommand(server.serverId, `give ${player} minecraft:cake ${cakeAmount}`);
+                }
                 totalAmount += cakeAmount;
+                ``
                 totalPlayers++;
                 await functions.sleep(100);
             }
