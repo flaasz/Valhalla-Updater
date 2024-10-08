@@ -67,13 +67,19 @@ module.exports = {
                 headers: header
             });
             //console.log(response);
-            if (!response.data.data.serverPackFileId) return null;
-            return response.data.data.serverPackFileId;
+            if (response.data.data.isServerPack) {
+                return versionId; // This is already a server pack
+            } else if (response.data.data.alternateFileId) {
+                return response.data.data.alternateFileId; // This is likely the server pack
+            } else {
+                return null; // No server pack found
+            }
         } catch (error) {
-            console.error(error);
+            console.error('Error in getServerFileId:', error);
+            return null;
         }
     },
-
+    
     /**
      * Gets the latest pack version.
      * @param {number} modPackId Id of the modpack on CurseForge.
