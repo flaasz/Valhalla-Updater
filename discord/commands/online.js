@@ -44,10 +44,10 @@ module.exports = {
         for (let server in data) {
             const fullName = server;
             
-            let tag = servers.find(s => s.name.trim() === server);
+            let serv = servers.find(s => s.name.trim() === server);
 
-            if (!tag) continue;
-            tag = tag.tag;
+            if (!serv) continue;
+            let tag = serv.tag;
             //if (server.status == "success") serverCount++;
 
             let onlinePlayerCount = data[server].length;
@@ -56,11 +56,18 @@ module.exports = {
 
             if (onlinePlayerCount > 0) {
 
+                if (serv.excludeFromServerList) {
+                    embed.addFields({
+                        name: `${fullName} - **${onlinePlayerCount}**`,
+                        value: `${data[server].toString().replace(/,/g, ", ").replace(/_/g, "\\_")}`
+                    });
 
-                embed.addFields({
-                    name: `**[${tag.toUpperCase()}]** ${fullName} - **${onlinePlayerCount}**`,
-                    value: `${data[server].toString().replace(/,/g, ", ").replace(/_/g, "\\_")}\n*${tag.toLowerCase()}.valhallamc.io*`
-                });
+                } else {
+                    embed.addFields({
+                        name: `**[${tag.toUpperCase()}]** ${fullName} - **${onlinePlayerCount}**`,
+                        value: `${data[server].toString().replace(/,/g, ", ").replace(/_/g, "\\_")}\n*${tag.toLowerCase()}.valhallamc.io*`
+                    });
+                }
             }
         }
 
