@@ -43,6 +43,7 @@ module.exports = {
         let versionObj = {};
 
         for (let server of serverList) {
+            if (server.excludeFromServerList) continue;
             serverCount++;
 
             if (!versionObj[server.server_version]) versionObj[server.server_version] = [];
