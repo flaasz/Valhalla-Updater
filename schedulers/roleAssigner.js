@@ -93,36 +93,24 @@ module.exports = {
         });
 
         async function buildButtons() {
-
             let serverList = await mongo.getServers();
             serverListFull = await addMentionButton(serverList);
-
+        
             serverList = serverListFull.filter(server => server.discord_role_id != "");
             serverListMissing = serverListFull.filter(server => server.discord_role_id === "");
             await generateNewRoles(serverListMissing);
-
+        
             const webhook = await getWebhook(options.roleChannelId);
-
+        
             const channel = await client.channels.fetch(options.roleChannelId);
-            const messages = await channel.messages.fetch({
-                limit: 10
-            });
-            let lastMessage = messages.find(msg => msg.webhookId === webhook.id);
-
-            if (!lastMessage) {
-                console.error(`Message not found! Making a new one...`);
-                lastMessage = await webhook.send({
-                    username: "ValhallaMC Role Assignment",
-                    content: "Click on buttons below to toggle the roles!",
-                });
-            }
-
-            let actionRows = [];
+            const messages = (await channel.messages.fetch({ limit: 10 }))
+                .filter(msg => msg.webhookId === webhook.id)
+                .sort((a, b) => b.createdTimestamp - a.createdTimestamp); 
+        
             let buttonList = [];
             for (let server of serverList) {
-
                 const channel = await client.channels.fetch(options.roleChannelId);
-
+        
                 let emoji = channel.guild.emojis.cache.find(emoji => emoji.name === server.tag);
                 if (!emoji) {
                     await generateEmoji(server);
@@ -136,13 +124,44 @@ module.exports = {
                     .setEmoji(emoji.id);
                 buttonList.push(button);
             }
-
-            while (buttonList.length > 0) {
-                actionRows.push(new ActionRowBuilder().addComponents(buttonList.splice(0, 5)));
+        
+            const chunkSize = 25;
+            const buttonChunks = [];
+            for (let i = 0; i < buttonList.length; i += chunkSize) {
+                buttonChunks.push(buttonList.slice(i, i + chunkSize));
             }
-            await webhook.editMessage(lastMessage.id, {
-                components: actionRows
+        
+            const actionRowsChunks = buttonChunks.map(chunk => {
+                let actionRows = [];
+                let buttonListChunk = [...chunk];
+                while (buttonListChunk.length > 0) {
+                    actionRows.push(new ActionRowBuilder().addComponents(buttonListChunk.splice(0, 5)));
+                }
+                return actionRows;
             });
+        
+            for (let i = 0; i < actionRowsChunks.length; i++) {
+                const message = messages.at(i); 
+                if (message) {
+                    await webhook.editMessage(message.id, {
+                        content: i === 0 ? "### Click on buttons below to toggle the roles!" : "More roles to assign!",
+                        components: actionRowsChunks[i]
+                    });
+                } else {
+                    await webhook.send({
+                        username: "ValhallaMC Role Assignment",
+                        content: i === 0 ? "### Click on buttons below to toggle the roles!" : "More roles to assign!",
+                        components: actionRowsChunks[i]
+                    });
+                }
+            }
+        
+            for (let i = actionRowsChunks.length; i < messages.size; i++) {
+                const message = messages.at(i);
+                if (message) {
+                    await message.delete();
+                }
+            }
         }
 
         async function generateNewRoles(serverList) {
