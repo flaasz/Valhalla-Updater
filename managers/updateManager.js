@@ -257,7 +257,7 @@ module.exports = {
     updateFTB: async function (pack, versionOverride, interaction) {
         const newManifest = await modpacksch.getFTBPackManifest(pack.modpackID, pack.newestFileID);
 
-        let newVersionNumber = getVersion(packManifest.name);
+        let newVersionNumber = getVersion(newManifest.name);
         if (versionOverride) newVersionNumber = versionOverride;
 
         const alert = alertScheduledUpdate.replace("[NEWVERSION]", newVersionNumber);
