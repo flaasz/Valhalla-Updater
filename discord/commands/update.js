@@ -78,6 +78,37 @@ module.exports = {
             default:
                 await message.edit('Platform not supported!');
         }
-        await message.reply(`Done! This update took ${((Date.now()-time)/1000/60).toFixed(2)} minutes.`);
+
+        const timeTaken = Date.now() - time;
+        await message.reply(`Done! This update took **${formatTime(timeTaken)}**.`);
 	},
 };  
+
+
+/**
+ * Formats a time duration in milliseconds into a human-readable string.
+ * @param {number} milliseconds - The time duration in milliseconds.
+ * @returns {string} - A formatted string (e.g., "2 minutes 30 seconds" or "1 hour 5 minutes").
+ */
+function formatTime(milliseconds) {
+    const seconds = Math.floor(milliseconds / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+
+    const remainingSeconds = seconds % 60;
+    const remainingMinutes = minutes % 60;
+
+    let formattedTime = '';
+
+    if (hours > 0) {
+        formattedTime += `${hours} hour${hours > 1 ? 's' : ''} `;
+    }
+    if (remainingMinutes > 0) {
+        formattedTime += `${remainingMinutes} minute${remainingMinutes > 1 ? 's' : ''} `;
+    }
+    if (remainingSeconds > 0 || formattedTime === '') {
+        formattedTime += `${remainingSeconds} second${remainingSeconds !== 1 ? 's' : ''}`;
+    }
+
+    return formattedTime.trim();
+}
