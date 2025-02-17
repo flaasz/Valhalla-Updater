@@ -20,7 +20,7 @@ module.exports = {
      * @returns Id of the latest version of the modpack.
      */
     getLatestFTBVersionId: async function (modPackId) {
-        let response = await axios.get(`https://api.modpacks.ch/public/modpack/${modPackId}`);
+        let response = await axios.get(`https://api.feed-the-beast.com/v1/modpacks/public/modpack/${modPackId}`);
 
         return response.data.versions[response.data.versions.length - 1].id;
     },
@@ -32,7 +32,7 @@ module.exports = {
      * @returns Object containing the manifest of the modpack.
      */
     getFTBPackManifest: async function (modPackId, modPackVersion) {
-        let response = await axios.get(`https://api.modpacks.ch/public/modpack/${modPackId}/${modPackVersion}`);
+        let response = await axios.get(`https://api.feed-the-beast.com/v1/modpacks/public/modpack/${modPackId}/${modPackVersion}`);
 
         return response.data;
     },
@@ -43,7 +43,7 @@ module.exports = {
      * @returns Object containing the data of the modpack.
      */
     getFTBPackData: async function (modPackId) {
-        let response = await axios.get(`https://api.modpacks.ch/public/modpack/${modPackId}`);
+        let response = await axios.get(`https://api.feed-the-beast.com/v1/modpacks/public/modpack/${modPackId}`);
 
         return response.data;
     },
@@ -56,7 +56,7 @@ module.exports = {
      * @returns String containing the changelog of the modpack.
      */
     getFTBChangelog: async function (modPackId, modPackVersion) {
-        let response = await axios.get(`https://api.modpacks.ch/public/modpack/${modPackId}/${modPackVersion}/changelog`);
+        let response = await axios.get(`https://api.feed-the-beast.com/v1/modpacks/public/modpack/${modPackId}/${modPackVersion}/changelog`);
 
         return response.data.content;
     },

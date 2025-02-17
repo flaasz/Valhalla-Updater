@@ -105,7 +105,7 @@ module.exports = {
             const channel = await client.channels.fetch(options.roleChannelId);
             const messages = (await channel.messages.fetch({ limit: 10 }))
                 .filter(msg => msg.webhookId === webhook.id)
-                .sort((a, b) => b.createdTimestamp - a.createdTimestamp); 
+                .sort((a, b) => a.createdTimestamp - b.createdTimestamp); 
         
             let buttonList = [];
             for (let server of serverList) {
