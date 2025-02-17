@@ -42,6 +42,7 @@ const {
     sendWebhook
 } = require('../discord/webhook');
 const manifest = require('../modules/manifest');
+const { verify } = require('crypto');
 const {
     active,
     announcementChannelId
@@ -83,11 +84,12 @@ module.exports = {
      * @param {object} interaction Object with the interaction data.(for Discord)
      */
 
-    updateCF: async function (pack, interaction) {
+    updateCF: async function (pack, versionOverride, interaction) {
 
         const packManifest = await modpacksch.getCFPackManifest(pack.modpackID, pack.newestFileID);
 
-        const newVersionNumber = getVersion(packManifest.name);
+        let newVersionNumber = getVersion(packManifest.name);
+        if (versionOverride) newVersionNumber = versionOverride;
 
         const alert = alertScheduledUpdate.replace("[NEWVERSION]", newVersionNumber);
 
@@ -252,10 +254,11 @@ module.exports = {
      * @param {object} pack Object with the server data.
      * @param {object} interaction Object with the interaction data.(for Discord)
      */
-    updateFTB: async function (pack, interaction) {
+    updateFTB: async function (pack, versionOverride, interaction) {
         const newManifest = await modpacksch.getFTBPackManifest(pack.modpackID, pack.newestFileID);
 
-        const newVersionNumber = getVersion(newManifest.name);
+        let newVersionNumber = getVersion(packManifest.name);
+        if (versionOverride) newVersionNumber = versionOverride;
 
         const alert = alertScheduledUpdate.replace("[NEWVERSION]", newVersionNumber);
 

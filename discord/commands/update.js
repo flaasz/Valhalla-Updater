@@ -26,7 +26,12 @@ module.exports = {
 			option.setName('server')
 				.setDescription('Server to update')
                 .setRequired(true)
-				.setAutocomplete(true)),
+				.setAutocomplete(true))
+        .addStringOption(option =>
+            option.setName('version')
+                .setDescription('Manual overwrite for the version number')
+                .setRequired(false)),
+
 	async autocomplete(interaction) {
 		const focusedValue = interaction.options.getFocused();
         const serverList = await getServers();
@@ -46,6 +51,7 @@ module.exports = {
 
     async execute(interaction) {
         const query = interaction.options.getString('server');
+        const versionOverride = interaction.options.getString('version');
         const serverList = await getServers();
         await interaction.deferReply();
         await interaction.editReply("Update manager is starting...");
@@ -61,13 +67,13 @@ module.exports = {
         let time = Date.now();
         switch (server.platform) {
             case "curseforge": 
-                await updater.updateCF(server, message);
+                await updater.updateCF(server, versionOverride, message);
                 break;
             case "feedthebeast":
-                await updater.updateFTB(server, message);
+                await updater.updateFTB(server, versionOverride, message);
                 break;
             case "gregtechnewhorizons":
-                await updater.updateGTNH(server, message);
+                await updater.updateGTNH(server, versionOverride, message);
                 break;
             default:
                 await message.edit('Platform not supported!');
