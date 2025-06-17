@@ -23,6 +23,13 @@ const {
 
 const mongoClient = new MongoClient(process.env.MONGODB_URL);
 
+// Separate client for live embed operations to avoid race conditions
+const liveEmbedClient = new MongoClient(process.env.MONGODB_URL);
+
+// Keep track of connection state
+let liveEmbedConnected = false;
+let mainClientConnected = false;
+
 module.exports = {
 
     /**
@@ -30,14 +37,17 @@ module.exports = {
      * @returns Array of objects containing the server data.
      */
     getServers: async function () {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         const serversArray = await mongoClient
             .db(mongoDBName)
             .collection(mongoDBserversCollection)
             .find({}).toArray();
 
         //console.log(serversArray);
-        mongoClient.close();
         return serversArray;
     },
 
@@ -46,14 +56,17 @@ module.exports = {
      * @returns Array of objects containing the shard data.
      */
     getShards: async function () {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         const shardsArray = await mongoClient
             .db(mongoDBName)
             .collection(mongoDBshardsCollection)
             .find({}).toArray();
 
         //console.log(shardsArray);
-        mongoClient.close();
         return shardsArray;
     },
 
@@ -65,7 +78,11 @@ module.exports = {
      * @returns Array of objects containing the tickets data.
      */
     getTickets: async function (id, username) {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         const ticketsData = await mongoClient
             .db(mongoDBName)
             .collection('tickets');
@@ -88,7 +105,6 @@ module.exports = {
         let results = [];
         results[0] = array;
         results[1] = contr;
-        mongoClient.close();
         return results;
     },
 
@@ -98,15 +114,17 @@ module.exports = {
      * @param {object} update Object containing the fields to update.
      */
     updateServers: async function (modpackId, update) {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         await mongoClient
             .db(mongoDBName)
             .collection(mongoDBserversCollection)
             .updateMany({
                 modpackID: modpackId
             }, update);
-
-        mongoClient.close();
     },
 
     /**
@@ -115,14 +133,104 @@ module.exports = {
      * @param {object} update Object containing the fields to update.
      */
     updateServer: async function (serverId, update) {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         await mongoClient
             .db(mongoDBName)
             .collection(mongoDBserversCollection)
             .updateOne({
                 serverId: serverId
             }, update);
-
-        mongoClient.close();
     },
+
+    /**
+     * Gets all live embeds from MongoDB.
+     * @returns Array of objects containing live embed data.
+     */
+    getLiveEmbeds: async function () {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        const embedsArray = await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .find({}).toArray();
+
+        return embedsArray;
+    },
+
+    /**
+     * Stores a new live embed in MongoDB.
+     * @param {string} messageId Discord message ID.
+     * @param {string} channelId Discord channel ID.
+     * @param {string} guildId Discord guild ID.
+     * @param {string} createdBy User ID who created the embed.
+     * @param {string} lastHash Hash of the current server state.
+     */
+    storeLiveEmbed: async function (messageId, channelId, guildId, createdBy, lastHash) {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .insertOne({
+                messageId: messageId,
+                channelId: channelId,
+                guildId: guildId,
+                createdBy: createdBy,
+                lastHash: lastHash,
+                createdAt: new Date()
+            });
+    },
+
+    /**
+     * Updates the hash for a live embed in MongoDB.
+     * @param {string} messageId Discord message ID.
+     * @param {string} newHash New hash of the server state.
+     */
+    updateLiveEmbedHash: async function (messageId, newHash) {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .updateOne({
+                messageId: messageId
+            }, {
+                $set: {
+                    lastHash: newHash,
+                    lastUpdated: new Date()
+                }
+            });
+    },
+
+    /**
+     * Removes a live embed from MongoDB.
+     * @param {string} messageId Discord message ID.
+     */
+    removeLiveEmbed: async function (messageId) {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .deleteOne({
+                messageId: messageId
+            });
+    },
+
 };
