@@ -273,123 +273,6 @@ module.exports = {
             );
     },
 
-    /**
-     * Gets active cron jobs by type.
-     * @param {string} type Type of cron job ('player_trigger', 'scheduled_reboot', etc.).
-     * @returns {Array} Array of active cron jobs.
-     */
-    getActiveCronJobs: async function (type) {
-        if (!mainClientConnected) {
-            await mongoClient.connect();
-            mainClientConnected = true;
-        }
-        
-        const jobs = await mongoClient
-            .db(mongoDBName)
-            .collection('cron_jobs')
-            .find({ 
-                type: type, 
-                active: true 
-            }).toArray();
-
-        return jobs;
-    },
-
-    /**
-     * Creates a new cron job.
-     * @param {object} jobData Cron job data.
-     * @returns {object} Inserted document with _id.
-     */
-    createCronJob: async function (jobData) {
-        if (!mainClientConnected) {
-            await mongoClient.connect();
-            mainClientConnected = true;
-        }
-        
-        const result = await mongoClient
-            .db(mongoDBName)
-            .collection('cron_jobs')
-            .insertOne({
-                ...jobData,
-                createdAt: new Date(),
-                active: true
-            });
-
-        return result;
-    },
-
-    /**
-     * Updates a cron job.
-     * @param {string} jobId Cron job ID.
-     * @param {object} updateData Data to update.
-     */
-    updateCronJob: async function (jobId, updateData) {
-        if (!mainClientConnected) {
-            await mongoClient.connect();
-            mainClientConnected = true;
-        }
-        
-        await mongoClient
-            .db(mongoDBName)
-            .collection('cron_jobs')
-            .updateOne(
-                { _id: jobId },
-                { $set: { ...updateData, lastUpdated: new Date() } }
-            );
-    },
-
-    /**
-     * Deactivates a cron job.
-     * @param {string} jobId Cron job ID.
-     */
-    deactivateCronJob: async function (jobId) {
-        if (!mainClientConnected) {
-            await mongoClient.connect();
-            mainClientConnected = true;
-        }
-        
-        await mongoClient
-            .db(mongoDBName)
-            .collection('cron_jobs')
-            .updateOne(
-                { _id: jobId },
-                { $set: { active: false, deactivatedAt: new Date() } }
-            );
-    },
-
-    /**
-     * Deletes a cron job.
-     * @param {string} jobId Cron job ID.
-     */
-    deleteCronJob: async function (jobId) {
-        if (!mainClientConnected) {
-            await mongoClient.connect();
-            mainClientConnected = true;
-        }
-        
-        await mongoClient
-            .db(mongoDBName)
-            .collection('cron_jobs')
-            .deleteOne({ _id: jobId });
-    },
-
-    /**
-     * Gets all cron jobs for management.
-     * @returns {Array} Array of all cron jobs.
-     */
-    getAllCronJobs: async function () {
-        if (!mainClientConnected) {
-            await mongoClient.connect();
-            mainClientConnected = true;
-        }
-        
-        const jobs = await mongoClient
-            .db(mongoDBName)
-            .collection('cron_jobs')
-            .find({}).toArray();
-
-        return jobs;
-    },
 
     /**
      * Gets recent reboot history.
@@ -416,6 +299,125 @@ module.exports = {
             .toArray();
 
         return history;
+    },
+
+    // Schedule job functions
+    /**
+     * Gets active schedule jobs by type.
+     * @param {string} type Type of schedule job ('player_trigger', 'scheduled_reboot', etc.).
+     * @returns {Array} Array of active schedule jobs.
+     */
+    getActiveScheduleJobs: async function (type) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const jobs = await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .find({ 
+                type: type, 
+                active: true 
+            }).toArray();
+
+        return jobs;
+    },
+
+    /**
+     * Creates a new schedule job.
+     * @param {object} jobData Schedule job data.
+     * @returns {object} Inserted document with _id.
+     */
+    createScheduleJob: async function (jobData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .insertOne({
+                ...jobData,
+                createdAt: new Date(),
+                active: true
+            });
+
+        return result;
+    },
+
+    /**
+     * Updates a schedule job.
+     * @param {string} jobId Schedule job ID.
+     * @param {object} updateData Data to update.
+     */
+    updateScheduleJob: async function (jobId, updateData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .updateOne(
+                { _id: jobId },
+                { $set: { ...updateData, lastUpdated: new Date() } }
+            );
+    },
+
+    /**
+     * Deactivates a schedule job.
+     * @param {string} jobId Schedule job ID.
+     */
+    deactivateScheduleJob: async function (jobId) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .updateOne(
+                { _id: jobId },
+                { $set: { active: false, deactivatedAt: new Date() } }
+            );
+    },
+
+    /**
+     * Deletes a schedule job.
+     * @param {string} jobId Schedule job ID.
+     */
+    deleteScheduleJob: async function (jobId) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .deleteOne({ _id: jobId });
+    },
+
+    /**
+     * Gets all schedule jobs for management.
+     * @returns {Array} Array of all schedule jobs.
+     */
+    getAllScheduleJobs: async function () {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const jobs = await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .find({}).toArray();
+
+        return jobs;
     },
 
 };

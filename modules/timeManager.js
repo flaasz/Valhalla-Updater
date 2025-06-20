@@ -1,12 +1,3 @@
-/*
- * File: timeManager.js
- * Project: valhalla-updater
- * File Created: Monday, 17th June 2025 6:17:00 pm
- * Author: Claude Code
- * -----
- * Copyright 2025 flaasz
- */
-
 module.exports = {
     /**
      * Gets current time in GMT+3 timezone

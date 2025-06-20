@@ -2,21 +2,20 @@ const mongo = require("../modules/mongo");
 const velocityMetrics = require("../modules/velocityMetrics");
 const pterodactyl = require("../modules/pterodactyl");
 const timeManager = require("../modules/timeManager");
+const functions = require("../modules/functions");
 const { EmbedBuilder } = require("discord.js");
 
 module.exports = {
-    name: 'advancedCron',
+    name: 'rebootScheduler',
     defaultConfig: {
         "active": true,
-        "interval": 30, // Check every 30 seconds (player triggers need responsiveness)
-        "rebootCheckInterval": 300, // Check for reboots every 5 minutes (300 seconds)
-        "rebootCheckEnabled": true,
-        "playerTriggerEnabled": true,
-        "maxConcurrentReboots": 4,
+        "interval": 300, // Check for reboots every 5 minutes (300 seconds)
+        "maxConcurrentReboots": 4, // Per node capacity
         "rebootRetryLimit": 3,
         "serverStartupTimeout": 20, // Minutes
         "batchingStrategy": "auto", // "auto" = dynamic based on nodes, "fixed" = use maxBatchSize
-        "maxBatchSize": 12 // Only used if batchingStrategy is "fixed"
+        "maxBatchSize": 12, // Only used if batchingStrategy is "fixed"
+        "playerThreshold": 25 // Reboot when less than this many players online
     },
 
     // Internal state tracking
@@ -25,8 +24,6 @@ module.exports = {
         rebootStartTime: null,
         rebootQueue: [],
         activeReboots: new Map(), // serverId -> { attempts, startTime, nodeId }
-        playerTriggers: new Map(), // playerId -> { commands, servers }
-        lastRebootCheck: 0, // Timestamp of last reboot check
         todayStats: {
             lowestPlayerCount: null,
             lowestPlayerTime: null,
@@ -36,13 +33,13 @@ module.exports = {
     },
 
     /**
-     * Starts the advanced cron scheduler
+     * Starts the reboot scheduler
      * @param {object} options Configuration options
      */
     start: async function (options) {
-        console.log(`Advanced Cron started - checking every ${options.interval} seconds`);
+        console.log(`Reboot Scheduler started - checking every ${options.interval} seconds`);
         
-        // FIXED: Store runtime config for use throughout the module
+        // Store runtime config for use throughout the module
         this.runtimeConfig = options;
         
         // Initialize today's stats
@@ -64,28 +61,13 @@ module.exports = {
             // Update player statistics
             await this.updatePlayerStats();
             
-            // Check for player-triggered commands
-            if (options.playerTriggerEnabled) {
-                await this.checkPlayerTriggers();
+            // Check for reboot scheduling
+            if (!this.state.isRebootInProgress && !this.state.todayStats.rebootCompleted) {
+                await this.checkRebootSchedule(options);
             }
-            
-            // Check for reboot scheduling - Only check every rebootCheckInterval
-            const now = Date.now();
-            const rebootCheckInterval = (options.rebootCheckInterval || 300) * 1000; // Convert to ms
-            
-            if (options.rebootCheckEnabled && 
-                !this.state.isRebootInProgress && 
-                !this.state.todayStats.rebootCompleted &&
-                (now - this.state.lastRebootCheck) > rebootCheckInterval) {
-                
-                this.state.lastRebootCheck = now;
-                await this.checkRebootSchedule();
-            }
-            
-            // Note: Active reboot monitoring is now handled within executeFullServerReboot
             
         } catch (error) {
-            console.error('Error in advancedCron.mainLoop:', error.message);
+            console.error('Error in rebootScheduler.mainLoop:', error.message);
         }
     },
 
@@ -131,15 +113,13 @@ module.exports = {
             const currentTime = timeManager.getCurrentTimeGMT3();
             const timeWindow = timeManager.checkRebootWindow();
             
-            // Update lowest player count if in reboot window
-            if (timeWindow.isInWindow) {
-                if (this.state.todayStats.lowestPlayerCount === null || totalPlayers < this.state.todayStats.lowestPlayerCount) {
-                    this.state.todayStats.lowestPlayerCount = totalPlayers;
-                    this.state.todayStats.lowestPlayerTime = currentTime.toISOString();
-                    
-                    // Save to database
-                    await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
-                }
+            // Update lowest player count
+            if (this.state.todayStats.lowestPlayerCount === null || totalPlayers < this.state.todayStats.lowestPlayerCount) {
+                this.state.todayStats.lowestPlayerCount = totalPlayers;
+                this.state.todayStats.lowestPlayerTime = currentTime.toISOString();
+                
+                // Save to database
+                await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
             }
             
         } catch (error) {
@@ -148,96 +128,10 @@ module.exports = {
     },
 
     /**
-     * Check for player-triggered commands
-     */
-    checkPlayerTriggers: async function () {
-        try {
-            const playersData = await velocityMetrics.getPlayers();
-            const activeTriggers = await mongo.getActiveCronJobs('player_trigger');
-            
-            
-            for (const trigger of activeTriggers) {
-                const { playerId, serverNames, commands, onJoin, lastSeenServers = [] } = trigger;
-                
-                // Track current servers where player is online
-                const currentServers = [];
-                for (const serverName of serverNames) {
-                    if (playersData[serverName] && playersData[serverName].includes(playerId)) {
-                        currentServers.push(serverName);
-                    }
-                }
-                
-                
-                const wasOnline = lastSeenServers.length > 0;
-                const isOnline = currentServers.length > 0;
-                
-                if (isOnline) {
-                    if (onJoin) {
-                        // OnJoin mode: execute EVERY time player goes from offline → online
-                        if (!wasOnline) {
-                            // Player just came online - execute trigger
-                            for (const serverName of currentServers) {
-                                await this.executePlayerTrigger(trigger, serverName);
-                                break; // Only execute once per join
-                            }
-                        }
-                        // If player was already online, don't execute (not a new join)
-                    } else {
-                        // Normal mode: execute continuously while online (every check)
-                        for (const serverName of currentServers) {
-                            await this.executePlayerTrigger(trigger, serverName);
-                            break; // Only execute once per check cycle
-                        }
-                    }
-                }
-                
-                // Update last seen servers for this trigger  
-                if (JSON.stringify(currentServers.sort()) !== JSON.stringify(lastSeenServers.sort())) {
-                    await mongo.updateCronJob(trigger._id, { lastSeenServers: currentServers });
-                }
-            }
-            
-        } catch (error) {
-            console.error('Error in player triggers:', error.message);
-        }
-    },
-
-    /**
-     * Execute commands for player trigger
-     * @param {object} trigger Trigger configuration
-     * @param {string} serverName Server where player was found
-     */
-    executePlayerTrigger: async function (trigger, serverName) {
-        try {
-            const servers = await mongo.getServers();
-            // FIX: Trim server names to handle trailing spaces in database
-            const server = servers.find(s => s.name.trim() === serverName.trim());
-            
-            if (!server) return;
-            
-            // Execute each command
-            for (const command of trigger.commands) {
-                console.log(`Player trigger: '${command}' executed for ${trigger.playerId} on ${server.tag}`);
-                await pterodactyl.sendCommand(server.serverId, command);
-                await this.sleep(1000); // 1 second delay between commands
-            }
-            
-            // Mark trigger as executed (if it's one-time)
-            if (trigger.oneTime) {
-                await mongo.deactivateCronJob(trigger._id);
-            }
-            
-        } catch (error) {
-            console.error('Error executing player trigger:', error.message);
-        }
-    },
-
-    /**
      * Check if reboot should be scheduled
      */
-    checkRebootSchedule: async function () {
+    checkRebootSchedule: async function (options) {
         try {
-            const timeWindow = timeManager.checkRebootWindow();
             const playersData = await velocityMetrics.getPlayers();
             
             let totalPlayers = 0;
@@ -251,17 +145,17 @@ module.exports = {
                 return;
             }
             
-            // Simple trigger logic: reboot if less than 25 players
+            // Simple trigger logic: reboot if less than threshold players
             let shouldTrigger = false;
             let triggerReason = '';
             
-            if (totalPlayers < 25) {
+            if (totalPlayers < options.playerThreshold) {
                 shouldTrigger = true;
-                triggerReason = `Low player count (${totalPlayers} < 25)`;
+                triggerReason = `Low player count (${totalPlayers} < ${options.playerThreshold})`;
             }
             
             if (shouldTrigger) {
-                await this.triggerRebootSequence(triggerReason, totalPlayers);
+                await this.triggerRebootSequence(triggerReason, totalPlayers, options);
             }
             
         } catch (error) {
@@ -270,25 +164,12 @@ module.exports = {
     },
 
     /**
-     * Analyze player count trend over last few checks
-     * @returns {object} Trend analysis
-     */
-    analyzePlayerTrend: async function () {
-        // This would ideally look at recent player count history
-        // For now, return a simple analysis
-        return {
-            isDecreasing: true, // Simplified for initial implementation
-            isStable: false,
-            isIncreasing: false
-        };
-    },
-
-    /**
      * Trigger the complete reboot sequence
      * @param {string} reason Reason for triggering
      * @param {number} currentPlayerCount Current player count
+     * @param {object} config Runtime configuration
      */
-    triggerRebootSequence: async function (reason, currentPlayerCount) {
+    triggerRebootSequence: async function (reason, currentPlayerCount, config) {
         console.log(`Triggering reboot sequence: ${reason}`);
         
         this.state.isRebootInProgress = true;
@@ -301,7 +182,7 @@ module.exports = {
         // Get all servers that need rebooting
         const servers = await mongo.getServers();
         
-        // DEBUG: Log all servers and their exclusion status
+        // Debug: Log all servers and their exclusion status
         console.log(`Total servers found: ${servers.length}`);
         servers.forEach(server => {
             const excluded = server.excludeFromServerList;
@@ -333,7 +214,7 @@ module.exports = {
         await this.sendRebootNotification('start', { reason, playerCount: currentPlayerCount, serverCount: eligibleServers.length });
         
         // Start processing the queue
-        await this.processRebootQueue(this.runtimeConfig || this.defaultConfig);
+        await this.processRebootQueue(config);
     },
 
     /**
@@ -387,7 +268,7 @@ module.exports = {
             
             console.log(`BATCH ${batchIndex + 1}/${batchConfig.totalBatches}: Processing ${currentBatch.length} servers SIMULTANEOUSLY`);
             
-            // Group current batch by nodes (4 servers per node max)
+            // Group current batch by nodes
             const batchByNode = this.groupServersByNode(currentBatch, serverNodeMapping);
             
             // Start ALL nodes in parallel - THIS IS THE FIX!
@@ -409,7 +290,7 @@ module.exports = {
             // Brief delay between batches for stability
             if (batchIndex + 1 < batchConfig.totalBatches) {
                 console.log(`Cooling down 30 seconds before next batch...`);
-                await this.sleep(30000);
+                await functions.sleep(30000);
             }
         }
         
@@ -490,10 +371,10 @@ module.exports = {
      * Calculate optimal batching strategy based on available nodes
      * @param {Array} realNodes Array of node objects
      * @param {number} totalServers Total number of servers to reboot
+     * @param {object} config Runtime configuration
      * @returns {object} Batching configuration
      */
     calculateOptimalBatching: function (realNodes, totalServers, config = this.defaultConfig) {
-        
         if (config.batchingStrategy === "fixed") {
             // Use fixed batch size from config
             return {
@@ -557,6 +438,7 @@ module.exports = {
      * Process all servers on a single node in parallel
      * @param {string} nodeId Node identifier
      * @param {Array} servers Array of servers for this node
+     * @param {object} config Runtime configuration
      */
     processNodeBatch: async function (nodeId, servers, config = this.defaultConfig) {
         const maxConcurrent = config.maxConcurrentReboots;
@@ -599,7 +481,7 @@ module.exports = {
                 
                 // Brief pause between sub-batches on same node
                 if (i + maxConcurrent < servers.length) {
-                    await this.sleep(5000); // 5 second pause
+                    await functions.sleep(5000); // 5 second pause
                 }
             }
             
@@ -648,7 +530,6 @@ module.exports = {
         }
     },
 
-
     /**
      * Execute the reboot warning sequence
      * @param {object} server Server object
@@ -678,7 +559,7 @@ module.exports = {
                 
                 // Wait for the specified delay (except for the last command)
                 if (i < warnings.length - 1) {
-                    await this.sleep(warnings[i].delay);
+                    await functions.sleep(warnings[i].delay);
                 }
             } catch (error) {
                 console.error(`Error sending command to ${server.name}:`, error.message);
@@ -686,7 +567,7 @@ module.exports = {
         }
         
         // After stop command, wait for clean shutdown
-        await this.sleep(60000); // Wait 1 minute after stop for clean shutdown
+        await functions.sleep(60000); // Wait 1 minute after stop for clean shutdown
     },
 
     /**
@@ -739,7 +620,7 @@ module.exports = {
                 }
                 
                 // Wait 30 seconds before next check
-                await this.sleep(30000);
+                await functions.sleep(30000);
                 
             } catch (error) {
                 console.error(`Error checking status for ${server.name}:`, error.message);
@@ -772,8 +653,6 @@ module.exports = {
         
         // Remove from active reboots
         this.state.activeReboots.delete(server.serverId);
-        
-        // Note: completeRebootSequence is now called from processRebootQueue when all batches are done
     },
 
     /**
@@ -793,7 +672,7 @@ module.exports = {
             try {
                 // Kill the server first
                 await pterodactyl.sendPowerAction(server.serverId, 'kill');
-                await this.sleep(10000); // Wait 10 seconds
+                await functions.sleep(10000); // Wait 10 seconds
                 
                 // Try starting again
                 await this.startServerAndMonitor(server);
@@ -863,26 +742,6 @@ module.exports = {
     },
 
     /**
-     * Monitor active reboots for timeouts and issues
-     * @param {object} options Configuration options
-     */
-    monitorActiveReboots: async function (options) {
-        const now = Date.now();
-        const timeout = options.serverStartupTimeout * 60 * 1000;
-        
-        for (const [serverId, rebootInfo] of this.state.activeReboots) {
-            if (rebootInfo.stage === 'starting' && rebootInfo.startupStartTime) {
-                const elapsed = now - rebootInfo.startupStartTime;
-                
-                if (elapsed > timeout) {
-                    console.log(`Server ${rebootInfo.server.name} startup timeout, handling failure`);
-                    await this.handleRebootFailure(rebootInfo.server);
-                }
-            }
-        }
-    },
-
-    /**
      * Send reboot notification to staff channel
      * @param {string} type Notification type ('start', 'complete', 'failure')
      * @param {object} data Notification data
@@ -932,13 +791,5 @@ module.exports = {
         } catch (error) {
             console.error('Error sending reboot notification:', error.message);
         }
-    },
-
-    /**
-     * Utility sleep function
-     * @param {number} ms Milliseconds to sleep
-     */
-    sleep: function (ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
     }
 };

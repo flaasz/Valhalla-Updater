@@ -9,7 +9,7 @@ const mongo = require('../../modules/mongo');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('cron-player')
+        .setName('schedule-player')
         .setDescription('Configure player-triggered commands')
         .setDefaultMemberPermissions(16)
         .addSubcommand(subcommand =>
@@ -84,7 +84,7 @@ module.exports = {
             );
         } else if (focusedOption.name === 'trigger_id') {
             const focusedValue = focusedOption.value;
-            const triggers = await mongo.getActiveCronJobs('player_trigger');
+            const triggers = await mongo.getActiveScheduleJobs('player_trigger');
             const choices = [];
 
             for (const trigger of triggers) {
@@ -128,7 +128,7 @@ module.exports = {
                     await interaction.editReply('Unknown subcommand!');
             }
         } catch (error) {
-            console.error('Error in cron-player command:', error.message);
+            console.error('Error in schedule-player command:', error.message);
             await interaction.editReply('An error occurred while processing the command.');
         }
     },
@@ -190,7 +190,7 @@ module.exports = {
             lastSeenServers: [] // Track where player was last seen for join detection
         };
         
-        const result = await mongo.createCronJob(triggerData);
+        const result = await mongo.createScheduleJob(triggerData);
         
         const embed = new EmbedBuilder()
             .setColor(0x00ff00)
@@ -209,7 +209,7 @@ module.exports = {
     },
 
     async listPlayerTriggers(interaction) {
-        const triggers = await mongo.getActiveCronJobs('player_trigger');
+        const triggers = await mongo.getActiveScheduleJobs('player_trigger');
         
         if (triggers.length === 0) {
             await interaction.editReply('No active player triggers found.');
@@ -242,7 +242,7 @@ module.exports = {
         
         try {
             const { ObjectId } = require('mongodb');
-            await mongo.deactivateCronJob(new ObjectId(triggerId));
+            await mongo.deactivateScheduleJob(new ObjectId(triggerId));
             
             const embed = new EmbedBuilder()
                 .setColor(0xffa500)
@@ -261,7 +261,7 @@ module.exports = {
         
         try {
             const { ObjectId } = require('mongodb');
-            await mongo.deleteCronJob(new ObjectId(triggerId));
+            await mongo.deleteScheduleJob(new ObjectId(triggerId));
             
             const embed = new EmbedBuilder()
                 .setColor(0xff0000)

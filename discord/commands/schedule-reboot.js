@@ -7,7 +7,7 @@ const mongo = require('../../modules/mongo');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('cron-reboot')
+        .setName('schedule-reboot')
         .setDescription('Manage automatic server reboots')
         .setDefaultMemberPermissions(16)
         .addSubcommand(subcommand =>
@@ -64,7 +64,7 @@ module.exports = {
                     await interaction.editReply('Unknown subcommand!');
             }
         } catch (error) {
-            console.error('Error in cron-reboot command:', error.message);
+            console.error('Error in schedule-reboot command:', error.message);
             await interaction.editReply('An error occurred while processing the command.');
         }
     },

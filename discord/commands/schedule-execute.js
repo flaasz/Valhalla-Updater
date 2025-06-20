@@ -4,11 +4,12 @@ const {
 } = require('discord.js');
 const mongo = require('../../modules/mongo');
 const pterodactyl = require('../../modules/pterodactyl');
+const { sleep } = require('../../modules/functions');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('cron-execute')
-        .setDescription('Manually execute specific cron operations')
+        .setName('schedule-execute')
+        .setDescription('Manually execute specific scheduled operations')
         .setDefaultMemberPermissions(16)
         .addSubcommand(subcommand =>
             subcommand
@@ -113,7 +114,7 @@ module.exports = {
         try {
             // Get the trigger
             const { ObjectId } = require('mongodb');
-            const allJobs = await mongo.getAllCronJobs();
+            const allJobs = await mongo.getAllScheduleJobs();
             const trigger = allJobs.find(job => job._id.toString() === triggerId && job.type === 'player_trigger');
             
             if (!trigger) {
@@ -157,7 +158,7 @@ module.exports = {
                 try {
                     for (const command of trigger.commands) {
                         await pterodactyl.sendCommand(server.serverId, command);
-                        await this.sleep(1000); // 1 second delay between commands
+                        await sleep(1000); // 1 second delay between commands
                     }
                     successCount++;
                     results.push(`✅ ${server.name}: Success`);
@@ -169,7 +170,7 @@ module.exports = {
             
             // Mark as executed if one-time
             if (trigger.oneTime) {
-                await mongo.deactivateCronJob(new ObjectId(triggerId));
+                await mongo.deactivateScheduleJob(new ObjectId(triggerId));
             }
             
             const embed = new EmbedBuilder()
@@ -271,7 +272,7 @@ module.exports = {
             }
             
             if (delay > 0 && i < serversToExecute.length - 1) {
-                await this.sleep(delay);
+                await sleep(delay);
             }
         }
         
@@ -353,7 +354,7 @@ module.exports = {
                 }
                 
                 if (i < testWarnings.length - 1) {
-                    await this.sleep(warning.delay);
+                    await sleep(warning.delay);
                 }
             }
             
@@ -377,11 +378,4 @@ module.exports = {
         }
     },
 
-    /**
-     * Utility sleep function
-     * @param {number} ms Milliseconds to sleep
-     */
-    sleep: function (ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
 };

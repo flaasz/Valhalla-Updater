@@ -8,8 +8,8 @@ const velocityMetrics = require('../../modules/velocityMetrics');
 
 module.exports = {
     data: new SlashCommandBuilder()
-        .setName('cron-status')
-        .setDescription('View comprehensive cron system status')
+        .setName('schedule-status')
+        .setDescription('View comprehensive scheduler system status')
         .setDefaultMemberPermissions(16)
         .setDMPermission(false),
 
@@ -31,12 +31,12 @@ module.exports = {
             const today = timeManager.getTodayDateString();
             const todayStats = await mongo.getRebootHistory(today);
             
-            // Get active cron jobs
-            const playerTriggers = await mongo.getActiveCronJobs('player_trigger');
+            // Get active schedule jobs
+            const playerTriggers = await mongo.getActiveScheduleJobs('player_trigger');
             
             // Get scheduler config
             const config = require('../../config/config.json');
-            const cronConfig = config.scheduler.advancedCron || {};
+            const scheduleConfig = config.scheduler.rebootScheduler || {};
             
             const embed = new EmbedBuilder()
                 .setColor(0x9c59b6)
@@ -47,7 +47,7 @@ module.exports = {
             embed.addFields(
                 { name: '🕐 Current Time (GMT+3)', value: timeWindow.timeString, inline: true },
                 { name: '👥 Total Players Online', value: totalPlayers.toString(), inline: true },
-                { name: '⚙️ System Active', value: cronConfig.active ? '✅ Yes' : '❌ No', inline: true }
+                { name: '⚙️ System Active', value: scheduleConfig.active ? '✅ Yes' : '❌ No', inline: true }
             );
             
             // Reboot System Status
@@ -61,7 +61,7 @@ module.exports = {
             }
             
             embed.addFields(
-                { name: '🔄 Reboot Scheduling', value: cronConfig.rebootCheckEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+                { name: '🔄 Reboot Scheduling', value: scheduleConfig.rebootCheckEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
                 { name: '📅 Today\'s Reboot', value: rebootStatus, inline: true },
                 { name: '🎯 Optimal Window', value: timeWindow.isInWindow ? '✅ Active' : '❌ Inactive', inline: true }
             );
@@ -89,7 +89,7 @@ module.exports = {
             
             // Player Trigger Status
             embed.addFields(
-                { name: '🎮 Player Triggers', value: cronConfig.playerTriggerEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+                { name: '🎮 Player Triggers', value: scheduleConfig.playerTriggerEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
                 { name: '📝 Active Triggers', value: playerTriggers.length.toString(), inline: true }
             );
             
@@ -109,12 +109,12 @@ module.exports = {
             embed.addFields({ name: '🎯 Next Action', value: nextAction, inline: false });
             
             // System Configuration
-            if (cronConfig.active) {
+            if (scheduleConfig.active) {
                 const configText = [
-                    `Check Interval: ${cronConfig.interval || 30}s`,
-                    `Max Concurrent Reboots: ${cronConfig.maxConcurrentReboots || 2}/node`,
-                    `Retry Limit: ${cronConfig.rebootRetryLimit || 3}`,
-                    `Startup Timeout: ${cronConfig.serverStartupTimeout || 20}min`
+                    `Check Interval: ${scheduleConfig.interval || 30}s`,
+                    `Max Concurrent Reboots: ${scheduleConfig.maxConcurrentReboots || 2}/node`,
+                    `Retry Limit: ${scheduleConfig.rebootRetryLimit || 3}`,
+                    `Startup Timeout: ${scheduleConfig.serverStartupTimeout || 20}min`
                 ].join('\n');
                 
                 embed.addFields({ name: '⚙️ Configuration', value: configText, inline: false });
@@ -123,8 +123,8 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
             
         } catch (error) {
-            console.error('Error in cron-status command:', error.message);
-            await interaction.editReply('❌ An error occurred while fetching cron status.');
+            console.error('Error in schedule-status command:', error.message);
+            await interaction.editReply('❌ An error occurred while fetching schedule status.');
         }
     }
 };
