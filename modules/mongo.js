@@ -233,4 +233,189 @@ module.exports = {
             });
     },
 
+    /**
+     * Gets reboot history for a specific date.
+     * @param {string} date Date string in YYYY-MM-DD format.
+     * @returns {object|null} Reboot history data or null if not found.
+     */
+    getRebootHistory: async function (date) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const history = await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_history')
+            .findOne({ date: date });
+
+        return history;
+    },
+
+    /**
+     * Updates reboot history for a specific date.
+     * @param {string} date Date string in YYYY-MM-DD format.
+     * @param {object} historyData Reboot history data.
+     */
+    updateRebootHistory: async function (date, historyData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_history')
+            .updateOne(
+                { date: date },
+                { $set: { ...historyData, lastUpdated: new Date() } },
+                { upsert: true }
+            );
+    },
+
+    /**
+     * Gets active cron jobs by type.
+     * @param {string} type Type of cron job ('player_trigger', 'scheduled_reboot', etc.).
+     * @returns {Array} Array of active cron jobs.
+     */
+    getActiveCronJobs: async function (type) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const jobs = await mongoClient
+            .db(mongoDBName)
+            .collection('cron_jobs')
+            .find({ 
+                type: type, 
+                active: true 
+            }).toArray();
+
+        return jobs;
+    },
+
+    /**
+     * Creates a new cron job.
+     * @param {object} jobData Cron job data.
+     * @returns {object} Inserted document with _id.
+     */
+    createCronJob: async function (jobData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('cron_jobs')
+            .insertOne({
+                ...jobData,
+                createdAt: new Date(),
+                active: true
+            });
+
+        return result;
+    },
+
+    /**
+     * Updates a cron job.
+     * @param {string} jobId Cron job ID.
+     * @param {object} updateData Data to update.
+     */
+    updateCronJob: async function (jobId, updateData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('cron_jobs')
+            .updateOne(
+                { _id: jobId },
+                { $set: { ...updateData, lastUpdated: new Date() } }
+            );
+    },
+
+    /**
+     * Deactivates a cron job.
+     * @param {string} jobId Cron job ID.
+     */
+    deactivateCronJob: async function (jobId) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('cron_jobs')
+            .updateOne(
+                { _id: jobId },
+                { $set: { active: false, deactivatedAt: new Date() } }
+            );
+    },
+
+    /**
+     * Deletes a cron job.
+     * @param {string} jobId Cron job ID.
+     */
+    deleteCronJob: async function (jobId) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('cron_jobs')
+            .deleteOne({ _id: jobId });
+    },
+
+    /**
+     * Gets all cron jobs for management.
+     * @returns {Array} Array of all cron jobs.
+     */
+    getAllCronJobs: async function () {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const jobs = await mongoClient
+            .db(mongoDBName)
+            .collection('cron_jobs')
+            .find({}).toArray();
+
+        return jobs;
+    },
+
+    /**
+     * Gets recent reboot history.
+     * @param {number} days Number of days to look back.
+     * @returns {Array} Array of reboot history records.
+     */
+    getRecentRebootHistory: async function (days = 7) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const cutoffString = cutoffDate.toISOString().split('T')[0];
+        
+        const history = await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_history')
+            .find({ 
+                date: { $gte: cutoffString }
+            })
+            .sort({ date: -1 })
+            .toArray();
+
+        return history;
+    },
+
 };

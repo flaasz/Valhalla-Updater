@@ -316,6 +316,54 @@ module.exports = {
                 }
             }, interval * 1000);
         });
+    },
+
+    /**
+     *  Discovers all available nodes from Pterodactyl admin API
+     * @returns {Array} Array of node objects with resource information
+     */
+    getNodes: async function () {
+        try {
+            const response = await axios.get(`${pterodactylHostName}api/application/nodes`, {
+                headers: header
+            });
+            
+            return response.data.data.map(node => ({
+                id: node.attributes.uuid,
+                name: node.attributes.name,
+                fqdn: node.attributes.fqdn,
+                memory: {
+                    total: node.attributes.memory,
+                    allocated: node.attributes.allocated_resources.memory
+                },
+                disk: {
+                    total: node.attributes.disk,
+                    allocated: node.attributes.allocated_resources.disk
+                },
+                capacity: 4 // Default safe concurrent server capacity (configurable via maxConcurrentReboots)
+            }));
+        } catch (error) {
+            console.error('Error fetching nodes:', error.response?.data || error.message);
+            return [];
+        }
+    },
+
+    /**
+     *  Gets the node assignment for a specific server
+     * @param {string} serverID Server ID
+     * @returns {string|null} Node UUID/ID or null if not found
+     */
+    getServerNode: async function (serverID) {
+        try {
+            const response = await axios.get(`${pterodactylHostName}api/client/servers/${serverID}`, {
+                headers: header
+            });
+            
+            return response.data.attributes.node;
+        } catch (error) {
+            console.error(`Error getting node for server ${serverID}:`, error.response?.data || error.message);
+            return null;
+        }
     }
 
 };
