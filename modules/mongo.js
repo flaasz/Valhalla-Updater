@@ -23,6 +23,13 @@ const {
 
 const mongoClient = new MongoClient(process.env.MONGODB_URL);
 
+// Separate client for live embed operations to avoid race conditions
+const liveEmbedClient = new MongoClient(process.env.MONGODB_URL);
+
+// Keep track of connection state
+let liveEmbedConnected = false;
+let mainClientConnected = false;
+
 module.exports = {
 
     /**
@@ -30,14 +37,17 @@ module.exports = {
      * @returns Array of objects containing the server data.
      */
     getServers: async function () {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         const serversArray = await mongoClient
             .db(mongoDBName)
             .collection(mongoDBserversCollection)
             .find({}).toArray();
 
         //console.log(serversArray);
-        mongoClient.close();
         return serversArray;
     },
 
@@ -46,14 +56,17 @@ module.exports = {
      * @returns Array of objects containing the shard data.
      */
     getShards: async function () {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         const shardsArray = await mongoClient
             .db(mongoDBName)
             .collection(mongoDBshardsCollection)
             .find({}).toArray();
 
         //console.log(shardsArray);
-        mongoClient.close();
         return shardsArray;
     },
 
@@ -65,7 +78,11 @@ module.exports = {
      * @returns Array of objects containing the tickets data.
      */
     getTickets: async function (id, username) {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         const ticketsData = await mongoClient
             .db(mongoDBName)
             .collection('tickets');
@@ -88,7 +105,6 @@ module.exports = {
         let results = [];
         results[0] = array;
         results[1] = contr;
-        mongoClient.close();
         return results;
     },
 
@@ -98,15 +114,17 @@ module.exports = {
      * @param {object} update Object containing the fields to update.
      */
     updateServers: async function (modpackId, update) {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         await mongoClient
             .db(mongoDBName)
             .collection(mongoDBserversCollection)
             .updateMany({
                 modpackID: modpackId
             }, update);
-
-        mongoClient.close();
     },
 
     /**
@@ -115,14 +133,294 @@ module.exports = {
      * @param {object} update Object containing the fields to update.
      */
     updateServer: async function (serverId, update) {
-        await mongoClient.connect();
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
         await mongoClient
             .db(mongoDBName)
             .collection(mongoDBserversCollection)
             .updateOne({
                 serverId: serverId
             }, update);
-
-        mongoClient.close();
     },
+
+    /**
+     * Gets all live embeds from MongoDB.
+     * @returns Array of objects containing live embed data.
+     */
+    getLiveEmbeds: async function () {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        const embedsArray = await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .find({}).toArray();
+
+        return embedsArray;
+    },
+
+    /**
+     * Stores a new live embed in MongoDB.
+     * @param {string} messageId Discord message ID.
+     * @param {string} channelId Discord channel ID.
+     * @param {string} guildId Discord guild ID.
+     * @param {string} createdBy User ID who created the embed.
+     * @param {string} lastHash Hash of the current server state.
+     */
+    storeLiveEmbed: async function (messageId, channelId, guildId, createdBy, lastHash) {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .insertOne({
+                messageId: messageId,
+                channelId: channelId,
+                guildId: guildId,
+                createdBy: createdBy,
+                lastHash: lastHash,
+                createdAt: new Date()
+            });
+    },
+
+    /**
+     * Updates the hash for a live embed in MongoDB.
+     * @param {string} messageId Discord message ID.
+     * @param {string} newHash New hash of the server state.
+     */
+    updateLiveEmbedHash: async function (messageId, newHash) {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .updateOne({
+                messageId: messageId
+            }, {
+                $set: {
+                    lastHash: newHash,
+                    lastUpdated: new Date()
+                }
+            });
+    },
+
+    /**
+     * Removes a live embed from MongoDB.
+     * @param {string} messageId Discord message ID.
+     */
+    removeLiveEmbed: async function (messageId) {
+        if (!liveEmbedConnected) {
+            await liveEmbedClient.connect();
+            liveEmbedConnected = true;
+        }
+        
+        await liveEmbedClient
+            .db(mongoDBName)
+            .collection('live_embeds')
+            .deleteOne({
+                messageId: messageId
+            });
+    },
+
+    /**
+     * Gets reboot history for a specific date.
+     * @param {string} date Date string in YYYY-MM-DD format.
+     * @returns {object|null} Reboot history data or null if not found.
+     */
+    getRebootHistory: async function (date) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const history = await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_history')
+            .findOne({ date: date });
+
+        return history;
+    },
+
+    /**
+     * Updates reboot history for a specific date.
+     * @param {string} date Date string in YYYY-MM-DD format.
+     * @param {object} historyData Reboot history data.
+     */
+    updateRebootHistory: async function (date, historyData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        // Remove _id field to prevent conflicts during upsert
+        const { _id, ...dataWithoutId } = historyData;
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_history')
+            .updateOne(
+                { date: date },
+                { $set: { ...dataWithoutId, lastUpdated: new Date() } },
+                { upsert: true }
+            );
+    },
+
+
+    /**
+     * Gets recent reboot history.
+     * @param {number} days Number of days to look back.
+     * @returns {Array} Array of reboot history records.
+     */
+    getRecentRebootHistory: async function (days = 7) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+        const cutoffString = cutoffDate.toISOString().split('T')[0];
+        
+        const history = await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_history')
+            .find({ 
+                date: { $gte: cutoffString }
+            })
+            .sort({ date: -1 })
+            .toArray();
+
+        return history;
+    },
+
+    // Schedule job functions
+    /**
+     * Gets active schedule jobs by type.
+     * @param {string} type Type of schedule job ('player_trigger', 'scheduled_reboot', etc.).
+     * @returns {Array} Array of active schedule jobs.
+     */
+    getActiveScheduleJobs: async function (type) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const jobs = await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .find({ 
+                type: type, 
+                active: true 
+            }).toArray();
+
+        return jobs;
+    },
+
+    /**
+     * Creates a new schedule job.
+     * @param {object} jobData Schedule job data.
+     * @returns {object} Inserted document with _id.
+     */
+    createScheduleJob: async function (jobData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .insertOne({
+                ...jobData,
+                createdAt: new Date(),
+                active: true
+            });
+
+        return result;
+    },
+
+    /**
+     * Updates a schedule job.
+     * @param {string} jobId Schedule job ID.
+     * @param {object} updateData Data to update.
+     */
+    updateScheduleJob: async function (jobId, updateData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .updateOne(
+                { _id: jobId },
+                { $set: { ...updateData, lastUpdated: new Date() } }
+            );
+    },
+
+    /**
+     * Deactivates a schedule job.
+     * @param {string} jobId Schedule job ID.
+     */
+    deactivateScheduleJob: async function (jobId) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .updateOne(
+                { _id: jobId },
+                { $set: { active: false, deactivatedAt: new Date() } }
+            );
+    },
+
+    /**
+     * Deletes a schedule job.
+     * @param {string} jobId Schedule job ID.
+     */
+    deleteScheduleJob: async function (jobId) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .deleteOne({ _id: jobId });
+    },
+
+    /**
+     * Gets all schedule jobs for management.
+     * @returns {Array} Array of all schedule jobs.
+     */
+    getAllScheduleJobs: async function () {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const jobs = await mongoClient
+            .db(mongoDBName)
+            .collection('schedule_jobs')
+            .find({}).toArray();
+
+        return jobs;
+    },
+
 };
