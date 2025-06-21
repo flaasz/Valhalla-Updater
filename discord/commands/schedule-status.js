@@ -40,7 +40,7 @@ module.exports = {
             
             const embed = new EmbedBuilder()
                 .setColor(0x9c59b6)
-                .setTitle('📋 Advanced Cron System Status')
+                .setTitle('📋 Scheduler System Status')
                 .setTimestamp();
             
             // System Status
@@ -61,7 +61,7 @@ module.exports = {
             }
             
             embed.addFields(
-                { name: '🔄 Reboot Scheduling', value: scheduleConfig.rebootCheckEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+                { name: '🔄 Reboot Scheduling', value: scheduleConfig.active ? '✅ Enabled' : '❌ Disabled', inline: true },
                 { name: '📅 Today\'s Reboot', value: rebootStatus, inline: true },
                 { name: '🎯 Optimal Window', value: timeWindow.isInWindow ? '✅ Active' : '❌ Inactive', inline: true }
             );
@@ -88,8 +88,9 @@ module.exports = {
             }
             
             // Player Trigger Status
+            const playerEventConfig = config.scheduler.playerEventScheduler || {};
             embed.addFields(
-                { name: '🎮 Player Triggers', value: scheduleConfig.playerTriggerEnabled ? '✅ Enabled' : '❌ Disabled', inline: true },
+                { name: '🎮 Player Triggers', value: playerEventConfig.active ? '✅ Enabled' : '❌ Disabled', inline: true },
                 { name: '📝 Active Triggers', value: playerTriggers.length.toString(), inline: true }
             );
             
@@ -111,10 +112,11 @@ module.exports = {
             // System Configuration
             if (scheduleConfig.active) {
                 const configText = [
-                    `Check Interval: ${scheduleConfig.interval || 30}s`,
-                    `Max Concurrent Reboots: ${scheduleConfig.maxConcurrentReboots || 2}/node`,
+                    `Check Interval: ${scheduleConfig.interval || 300}s`,
+                    `Max Concurrent Reboots: ${scheduleConfig.maxConcurrentReboots || 4}/node`,
                     `Retry Limit: ${scheduleConfig.rebootRetryLimit || 3}`,
-                    `Startup Timeout: ${scheduleConfig.serverStartupTimeout || 20}min`
+                    `Startup Timeout: ${scheduleConfig.serverStartupTimeout || 20}min`,
+                    `Player Threshold: ${scheduleConfig.playerThreshold || 25}`
                 ].join('\n');
                 
                 embed.addFields({ name: '⚙️ Configuration', value: configText, inline: false });

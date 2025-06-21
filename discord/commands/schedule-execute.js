@@ -102,7 +102,7 @@ module.exports = {
                     await interaction.editReply('Unknown subcommand!');
             }
         } catch (error) {
-            console.error('Error in cron-execute command:', error.message);
+            console.error('Error in schedule-execute command:', error.message);
             await interaction.editReply('An error occurred while executing the command.');
         }
     },

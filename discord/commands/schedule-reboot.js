@@ -76,7 +76,7 @@ module.exports = {
         
         // Get scheduler status
         const config = require('../../config/config.json');
-        const isEnabled = config.scheduler.advancedCron?.rebootCheckEnabled || false;
+        const isEnabled = config.scheduler.rebootScheduler?.active || false;
         
         const embed = new EmbedBuilder()
             .setColor(0x9c59b6)
@@ -132,12 +132,13 @@ module.exports = {
         }
         
         // Trigger manual reboot
-        const schedulerModule = require('../../schedulers/advancedCron');
+        const rebootScheduler = require('../../schedulers/rebootScheduler');
         
         try {
-            await schedulerModule.triggerRebootSequence(
+            await rebootScheduler.triggerRebootSequence(
                 `Manual trigger by ${interaction.user.username} (${interaction.user.id})`,
-                0 // Player count not relevant for manual trigger
+                0, // Player count not relevant for manual trigger
+                rebootScheduler.runtimeConfig || rebootScheduler.defaultConfig
             );
             
             const embed = new EmbedBuilder()
@@ -162,18 +163,19 @@ module.exports = {
         // Update config
         const config = require('../../config/config.json');
         
-        if (!config.scheduler.advancedCron) {
-            config.scheduler.advancedCron = {
+        if (!config.scheduler.rebootScheduler) {
+            config.scheduler.rebootScheduler = {
                 active: true,
-                interval: 30,
-                rebootCheckEnabled: true,
-                playerTriggerEnabled: true,
-                maxConcurrentReboots: 2,
+                interval: 300,
+                maxConcurrentReboots: 4,
                 rebootRetryLimit: 3,
-                serverStartupTimeout: 20
+                serverStartupTimeout: 20,
+                batchingStrategy: "auto",
+                maxBatchSize: 12,
+                playerThreshold: 25
             };
         } else {
-            config.scheduler.advancedCron.rebootCheckEnabled = true;
+            config.scheduler.rebootScheduler.active = true;
         }
         
         // Write config back
@@ -195,8 +197,8 @@ module.exports = {
         // Update config
         const config = require('../../config/config.json');
         
-        if (config.scheduler.advancedCron) {
-            config.scheduler.advancedCron.rebootCheckEnabled = false;
+        if (config.scheduler.rebootScheduler) {
+            config.scheduler.rebootScheduler.active = false;
         }
         
         // Write config back

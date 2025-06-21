@@ -263,12 +263,15 @@ module.exports = {
             mainClientConnected = true;
         }
         
+        // Remove _id field to prevent conflicts during upsert
+        const { _id, ...dataWithoutId } = historyData;
+        
         await mongoClient
             .db(mongoDBName)
             .collection('reboot_history')
             .updateOne(
                 { date: date },
-                { $set: { ...historyData, lastUpdated: new Date() } },
+                { $set: { ...dataWithoutId, lastUpdated: new Date() } },
                 { upsert: true }
             );
     },
