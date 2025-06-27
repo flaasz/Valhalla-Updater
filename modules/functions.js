@@ -15,17 +15,116 @@ const path = require('path');
 const crypto = require('crypto');
 
 
-module.exports = {
-
-    /**
-     * Checks if the mods folder exists in the specified path and removes the parent folder if it doesn't.
+module.exports = {    /**
+     * Checks if the mods folder exists in the specified path.
+     * If 'overrides' folder exists, assume it contains the actual modpack content.
      * @param {string} path Path to the folder to check.
      */
     checkMods: async function (path) {
         let folderContents = await fs.readdirSync(path);
-        if (!folderContents.includes("mods")) {
-            console.log("Mods folder not found! Removing parent folder...");
-            await module.exports.removeParentFolder(`${path}/${folderContents[0]}`);
+        
+        // Check for a server files directory (like Server-Files-X.X.X)
+        const serverDirRegex = /^Server-Files|^server-files|^ServerPack|^serverpack/;
+        const serverDirs = folderContents.filter(item => {
+            const itemPath = `${path}/${item}`;
+            return fs.existsSync(itemPath) && 
+                   fs.lstatSync(itemPath).isDirectory() && 
+                   (serverDirRegex.test(item) || item.toLowerCase().includes('server'));
+        });
+        
+        // If we found a likely server files container directory
+        if (serverDirs.length === 1) {
+            console.log(`Found server pack directory: ${serverDirs[0]}. Moving contents to parent directory...`);
+            const serverDir = serverDirs[0];
+            const serverPath = `${path}/${serverDir}`;
+            const serverContents = await fs.readdirSync(serverPath);
+            
+            // Move all contents from server dir to parent directory
+            for (const item of serverContents) {
+                const sourcePath = `${serverPath}/${item}`;
+                const destPath = `${path}/${item}`;
+                
+                // Skip if destination already exists
+                if (!fs.existsSync(destPath)) {
+                    if (fs.lstatSync(sourcePath).isDirectory()) {
+                        await fs.copy(sourcePath, destPath);
+                    } else {
+                        await fs.copyFile(sourcePath, destPath);
+                    }
+                }
+            }
+            
+            // Remove the now-unnecessary server directory to avoid duplication
+            await fs.remove(`${path}/${serverDir}`);
+            console.log(`Moved server files and removed container directory`);
+            
+            // Update folder contents for next checks
+            folderContents = await fs.readdirSync(path);
+        }
+        
+        // First check if there's an overrides folder
+        if (folderContents.includes("overrides")) {
+            console.log("Found 'overrides' folder. Moving contents to parent directory...");
+            const overridesPath = `${path}/overrides`;
+            const overrideContents = await fs.readdirSync(overridesPath);
+            
+            // Copy all contents from overrides to parent directory
+            for (const item of overrideContents) {
+                const sourcePath = `${overridesPath}/${item}`;
+                const destPath = `${path}/${item}`;
+                
+                // Skip if destination already exists
+                if (!fs.existsSync(destPath)) {
+                    if (fs.lstatSync(sourcePath).isDirectory()) {
+                        await fs.copy(sourcePath, destPath);
+                    } else {
+                        await fs.copyFile(sourcePath, destPath);
+                    }
+                }
+            }
+            
+            // Now check if mods were moved
+            folderContents = await fs.readdirSync(path);
+            if (!folderContents.includes("mods")) {
+                console.log("Mods folder not found even after processing overrides!");
+            }
+        } else if (!folderContents.includes("mods")) {
+            // Try to find the directory containing mods
+            const potentialDirectories = folderContents.filter(item => {
+                const itemPath = `${path}/${item}`;
+                return fs.existsSync(itemPath) && fs.lstatSync(itemPath).isDirectory();
+            });
+            
+            if (potentialDirectories.length > 0) {
+                // Check each directory for a mods folder
+                for (const dir of potentialDirectories) {
+                    const dirPath = `${path}/${dir}`;
+                    const dirContents = await fs.readdirSync(dirPath);
+                    
+                    if (dirContents.includes("mods")) {
+                        console.log(`Found mods folder inside ${dir}. Moving contents to parent directory...`);
+                        try {
+                            for (const item of dirContents) {
+                                const sourcePath = `${dirPath}/${item}`;
+                                const destPath = `${path}/${item}`;
+                                
+                                if (!fs.existsSync(destPath)) {
+                                    if (fs.lstatSync(sourcePath).isDirectory()) {
+                                        await fs.copy(sourcePath, destPath);
+                                    } else {
+                                        await fs.copyFile(sourcePath, destPath);
+                                    }
+                                }
+                            }
+                            break;
+                        } catch (error) {
+                            console.error(`Error moving contents from ${dir}:`, error);
+                        }
+                    }
+                }
+            } else {
+                console.log("Mods folder not found and no suitable directories to check!");
+            }
         }
     },
 
