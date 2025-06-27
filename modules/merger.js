@@ -29,13 +29,30 @@ module.exports = {
                     force: true
                 });
             }
-        }
-        console.log("Removed old files");
+        }        console.log("Removed old files");
         for (let path of changeList.additions) {
-            fs.cpSync(`${dir}/compare/new${path}`, `${dir}/compare/main${path}`, {
-                recursive: true
-            });
-            //fs.copyFileSync(`./compare/new${path}`, `./temp${path}`);
+            try {
+                const sourcePath = `${dir}/compare/new${path}`;
+                const destPath = `${dir}/compare/main${path}`;
+                
+                // Check if source path exists before copying
+                if (fs.existsSync(sourcePath)) {
+                    // Create parent directory if it doesn't exist
+                    const parentDir = destPath.substring(0, destPath.lastIndexOf('/'));
+                    if (!fs.existsSync(parentDir)) {
+                        fs.mkdirSync(parentDir, { recursive: true });
+                    }
+                    
+                    fs.cpSync(sourcePath, destPath, {
+                        recursive: true
+                    });
+                } else {
+                    console.log(`Warning: Source path does not exist: ${sourcePath}`);
+                }
+            } catch (error) {
+                console.error(`Error copying file ${path}: ${error.message}`);
+                // Continue with next file instead of failing the entire update
+            }
         }
         console.log("Added new files");
     },
