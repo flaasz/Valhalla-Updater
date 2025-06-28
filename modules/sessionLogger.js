@@ -100,11 +100,12 @@ class SessionLogger {
 
     compressLogFile(filePath) {
         try {
-            const archiver = require('archiver');
+            const zlib = require('zlib');
+            const input = fs.createReadStream(filePath);
             const output = fs.createWriteStream(`${filePath}.gz`);
-            const archive = archiver('gzip', { level: 9 });
+            const gzip = zlib.createGzip();
             
-            output.on('close', () => {
+            output.on('finish', () => {
                 // Delete original after compression completes
                 try {
                     fs.unlinkSync(filePath);
@@ -113,13 +114,19 @@ class SessionLogger {
                 }
             });
             
-            archive.on('error', (err) => {
+            input.on('error', (err) => {
+                console.error(`Log compression read error: ${err.message}`);
+            });
+            
+            output.on('error', (err) => {
+                console.error(`Log compression write error: ${err.message}`);
+            });
+            
+            gzip.on('error', (err) => {
                 console.error(`Log compression failed: ${err.message}`);
             });
             
-            archive.pipe(output);
-            archive.file(filePath, { name: path.basename(filePath) });
-            archive.finalize();
+            input.pipe(gzip).pipe(output);
             
         } catch (err) {
             // Compression failed, keep uncompressed file
