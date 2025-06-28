@@ -17,6 +17,7 @@ const {
     SlashCommandBuilder,
     AttachmentBuilder
 } = require('discord.js');
+const sessionLogger = require('../../modules/sessionLogger');
 const {
     getServers
 } = require('../../modules/mongo');
@@ -147,7 +148,7 @@ async function sendAdvancedCommand(serverId, command) {
         });
 
         socket.once('error', (error) => {
-            console.error("Socket error:", error);
+            sessionLogger.error('Execute', 'Socket error:', error);
             reject(error);
         });
     });

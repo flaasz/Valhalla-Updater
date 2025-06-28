@@ -13,6 +13,7 @@
 const fs = require('fs-extra');
 const path = require('path');
 const crypto = require('crypto');
+const sessionLogger = require('./sessionLogger');
 
 
 module.exports = {    /**
@@ -34,7 +35,7 @@ module.exports = {    /**
         
         // If we found a likely server files container directory
         if (serverDirs.length === 1) {
-            console.log(`Found server pack directory: ${serverDirs[0]}. Moving contents to parent directory...`);
+            sessionLogger.info('Functions', `Found server pack directory: ${serverDirs[0]}. Moving contents to parent directory...`);
             const serverDir = serverDirs[0];
             const serverPath = `${path}/${serverDir}`;
             const serverContents = await fs.readdirSync(serverPath);
@@ -56,7 +57,7 @@ module.exports = {    /**
             
             // Remove the now-unnecessary server directory to avoid duplication
             await fs.remove(`${path}/${serverDir}`);
-            console.log(`Moved server files and removed container directory`);
+            sessionLogger.info('Functions', `Moved server files and removed container directory`);
             
             // Update folder contents for next checks
             folderContents = await fs.readdirSync(path);
@@ -64,7 +65,7 @@ module.exports = {    /**
         
         // First check if there's an overrides folder
         if (folderContents.includes("overrides")) {
-            console.log("Found 'overrides' folder. Moving contents to parent directory...");
+            sessionLogger.info('Functions', "Found 'overrides' folder. Moving contents to parent directory...");
             const overridesPath = `${path}/overrides`;
             const overrideContents = await fs.readdirSync(overridesPath);
             
@@ -86,7 +87,7 @@ module.exports = {    /**
             // Now check if mods were moved
             folderContents = await fs.readdirSync(path);
             if (!folderContents.includes("mods")) {
-                console.log("Mods folder not found even after processing overrides!");
+                sessionLogger.warn('Functions', "Mods folder not found even after processing overrides!");
             }
         } else if (!folderContents.includes("mods")) {
             // Try to find the directory containing mods
@@ -102,7 +103,7 @@ module.exports = {    /**
                     const dirContents = await fs.readdirSync(dirPath);
                     
                     if (dirContents.includes("mods")) {
-                        console.log(`Found mods folder inside ${dir}. Moving contents to parent directory...`);
+                        sessionLogger.info('Functions', `Found mods folder inside ${dir}. Moving contents to parent directory...`);
                         try {
                             for (const item of dirContents) {
                                 const sourcePath = `${dirPath}/${item}`;
@@ -118,12 +119,12 @@ module.exports = {    /**
                             }
                             break;
                         } catch (error) {
-                            console.error(`Error moving contents from ${dir}:`, error);
+                            sessionLogger.error('Functions', `Error moving contents from ${dir}:`, error);
                         }
                     }
                 }
             } else {
-                console.log("Mods folder not found and no suitable directories to check!");
+                sessionLogger.warn('Functions', "Mods folder not found and no suitable directories to check!");
             }
         }
     },
@@ -178,9 +179,9 @@ module.exports = {    /**
             }
             // Remove the now empty parent folder
             await fs.rmdir(folderPath);
-            console.log(`Parent folder '${folderPath}' removed successfully.`);
+            sessionLogger.info('Functions', `Parent folder '${folderPath}' removed successfully`);
         } catch (err) {
-            console.error(`Error removing parent folder '${folderPath}':`, err);
+            sessionLogger.error('Functions', `Error removing parent folder '${folderPath}':`, err);
         }
     },
 

@@ -51,7 +51,7 @@ module.exports = {
                 return; // No changes detected, skip all updates
             }
             
-            console.log('Server status changes detected, updating live embeds...');
+            sessionLogger.info('ServerStatusMonitor', 'Server status changes detected, updating live embeds...');
             
             // Update all embeds that need updating
             for (const embedData of liveEmbeds) {
@@ -60,7 +60,7 @@ module.exports = {
                 }
             }
         } catch (error) {
-            console.error('Error in serverStatusMonitor.checkAndUpdateEmbeds:', error.message);
+            sessionLogger.error('ServerStatusMonitor', 'Error in checkAndUpdateEmbeds:', error.message);
         }
     }
 };
@@ -81,14 +81,14 @@ async function updateLiveEmbed(embedData, serverList, shardList, newHash) {
         // Fetch the channel and message
         const channel = await client.channels.fetch(embedData.channelId);
         if (!channel) {
-            console.warn(`Channel ${embedData.channelId} not found, removing embed from database`);
+            sessionLogger.warn('ServerStatusMonitor', `Channel ${embedData.channelId} not found, removing embed from database`);
             await mongo.removeLiveEmbed(embedData.messageId);
             return;
         }
 
         const message = await channel.messages.fetch(embedData.messageId);
         if (!message) {
-            console.warn(`Message ${embedData.messageId} not found, removing embed from database`);
+            sessionLogger.warn('ServerStatusMonitor', `Message ${embedData.messageId} not found, removing embed from database`);
             await mongo.removeLiveEmbed(embedData.messageId);
             return;
         }
@@ -102,18 +102,18 @@ async function updateLiveEmbed(embedData, serverList, shardList, newHash) {
         // Update the hash in database
         await mongo.updateLiveEmbedHash(embedData.messageId, newHash);
         
-        console.log(`Updated live embed ${embedData.messageId}`);
+        sessionLogger.info('ServerStatusMonitor', `Updated live embed ${embedData.messageId}`);
         
     } catch (error) {
         if (error.code === 10008 || error.code === 10003) {
             // Message or channel not found
-            console.warn(`Message/Channel not found, removing embed ${embedData.messageId} from database`);
+            sessionLogger.warn('ServerStatusMonitor', `Message/Channel not found, removing embed ${embedData.messageId} from database`);
             await mongo.removeLiveEmbed(embedData.messageId);
         } else if (error.code === 50013) {
             // Missing permissions
-            console.warn(`Missing permissions to update embed ${embedData.messageId}`);
+            sessionLogger.warn('ServerStatusMonitor', `Missing permissions to update embed ${embedData.messageId}`);
         } else {
-            console.error(`Error updating live embed ${embedData.messageId}:`, error);
+            sessionLogger.error('ServerStatusMonitor', `Error updating live embed ${embedData.messageId}:`, error);
         }
     }
 }

@@ -4,6 +4,23 @@ const {
 } = require('discord.js');
 const timeManager = require('../../modules/timeManager');
 const mongo = require('../../modules/mongo');
+const sessionLogger = require('../../modules/sessionLogger');
+
+// Helper function to safely reply to Discord interactions - NEVER throws
+async function safeEditReply(interaction, content) {
+    try {
+        if (!interaction) return; // Safety check
+        return await interaction.editReply(content);
+    } catch (error) {
+        try {
+            sessionLogger.warn('ScheduleRebootCommand', 'Failed to send Discord reply (token likely expired)', error.message);
+        } catch (logError) {
+            // Even logging failed - fallback to console (guaranteed to work)
+            console.warn('Discord reply failed AND logging failed:', error.message, logError.message);
+        }
+        // Never rethrow - this function must NEVER crash the caller
+    }
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -78,8 +95,18 @@ module.exports = {
                     await interaction.editReply('Unknown subcommand!');
             }
         } catch (error) {
-            console.error('Error in schedule-reboot command:', error.message);
-            await interaction.editReply('An error occurred while processing the command.');
+            sessionLogger.error('ScheduleRebootCommand', `Error in schedule-reboot ${subcommand}`, error.message);
+            
+            // Try to respond, but don't crash if Discord interaction has expired
+            if (interaction.deferred || interaction.replied) {
+                await safeEditReply(interaction, 'An error occurred while processing the command.');
+            } else {
+                try {
+                    await interaction.reply('An error occurred while processing the command.');
+                } catch (discordError) {
+                    sessionLogger.warn('ScheduleRebootCommand', 'Failed to send error response to Discord', discordError.message);
+                }
+            }
         }
     },
 
@@ -168,8 +195,8 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
             
         } catch (error) {
-            console.error('Error forcing reboot:', error.message);
-            await interaction.editReply('❌ Failed to trigger reboot sequence.');
+            sessionLogger.error('ScheduleRebootCommand', 'Error forcing reboot', error.message);
+            await safeEditReply(interaction, '❌ Failed to trigger reboot sequence.');
         }
     },
 

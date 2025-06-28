@@ -88,7 +88,7 @@ module.exports = {
                     await sleep(2000);
                     await response.delete();
                 } catch (error) {
-                    console.error(error);
+                    sessionLogger.error('RoleAssigner', 'Error during role assignment:', error);
                 }
             }
         });

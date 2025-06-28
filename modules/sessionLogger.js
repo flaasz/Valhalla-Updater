@@ -102,19 +102,25 @@ class SessionLogger {
         try {
             const archiver = require('archiver');
             const output = fs.createWriteStream(`${filePath}.gz`);
-            const archive = archiver('gzip');
+            const archive = archiver('gzip', { level: 9 });
             
-            archive.pipe(output);
-            archive.file(filePath, { name: path.basename(filePath) });
-            
-            archive.finalize().then(() => {
-                // Delete original after compression
+            output.on('close', () => {
+                // Delete original after compression completes
                 try {
                     fs.unlinkSync(filePath);
                 } catch (deleteErr) {
                     console.error(`Could not delete original log file: ${deleteErr.message}`);
                 }
             });
+            
+            archive.on('error', (err) => {
+                console.error(`Log compression failed: ${err.message}`);
+            });
+            
+            archive.pipe(output);
+            archive.file(filePath, { name: path.basename(filePath) });
+            archive.finalize();
+            
         } catch (err) {
             // Compression failed, keep uncompressed file
             console.error(`Log compression failed: ${err.message}`);

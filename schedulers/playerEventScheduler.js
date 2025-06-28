@@ -35,7 +35,7 @@ module.exports = {
             await this.checkPlayerTriggers();
             
         } catch (error) {
-            console.error('Error in playerEventScheduler.mainLoop:', error.message);
+            sessionLogger.error('PlayerEventScheduler', 'Error in mainLoop:', error.message);
         }
     },
 
@@ -88,7 +88,7 @@ module.exports = {
             }
             
         } catch (error) {
-            console.error('Error in player triggers:', error.message);
+            sessionLogger.error('PlayerEventScheduler', 'Error in player triggers:', error.message);
         }
     },
 
@@ -117,7 +117,7 @@ module.exports = {
             }
             
         } catch (error) {
-            console.error('Error executing player trigger:', error.message);
+            sessionLogger.error('PlayerEventScheduler', 'Error executing player trigger:', error.message);
         }
     }
 };

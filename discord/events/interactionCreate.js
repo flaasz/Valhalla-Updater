@@ -11,6 +11,7 @@
  */
 
 const { Events } = require('discord.js');
+const sessionLogger = require('../../modules/sessionLogger');
 
 module.exports = {
 	name: Events.InteractionCreate,
@@ -20,14 +21,14 @@ module.exports = {
             const command = interaction.client.commands.get(interaction.commandName);
     
             if (!command) {
-                console.error(`No command matching ${interaction.commandName} was found.`);
+                sessionLogger.error('InteractionHandler', `No autocomplete command matching ${interaction.commandName} was found.`);
                 return;
             }
     
             try {
                 await command.autocomplete(interaction);
             } catch (error) {
-                console.error(error);
+                sessionLogger.error('InteractionHandler', 'Error in autocomplete:', error);
             }
 
         }
@@ -37,14 +38,14 @@ module.exports = {
         const command = interaction.client.commands.get(interaction.commandName);
     
         if (!command) {
-            console.error(`No command matching ${interaction.commandName} was found.`);
+            sessionLogger.error('InteractionHandler', `No chat command matching ${interaction.commandName} was found.`);
             return;
         }
     
         try {
             await command.execute(interaction);
         } catch (error) {
-            console.error(error);
+            sessionLogger.error('InteractionHandler', 'Error executing command:', error);
             if (interaction.replied || interaction.deferred) {
                 await interaction.followUp({
                     content: 'There was an error while executing this command!',

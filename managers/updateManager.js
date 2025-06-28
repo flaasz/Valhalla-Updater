@@ -43,6 +43,7 @@ const {
 } = require('../discord/webhook');
 const manifest = require('../modules/manifest');
 const { verify } = require('crypto');
+const sessionLogger = require('../modules/sessionLogger');
 const {
     active,
     announcementChannelId
@@ -530,7 +531,7 @@ module.exports = {
             
             if (!newestVersionUrl) {
                 const errorMsg = `Version ${versionOverride} not found in available GTNH versions!`;
-                console.error(errorMsg);
+                sessionLogger.error('UpdateManager', errorMsg);
                 await interaction.edit(errorMsg);
                 return;
             }
@@ -545,7 +546,7 @@ module.exports = {
         
         if (!currentVersionUrl) {
             const errorMsg = `Current version ${pack.modpack_version} not found in available GTNH versions!`;
-            console.error(errorMsg);
+            sessionLogger.error('UpdateManager', errorMsg);
             await interaction.edit(errorMsg);
             return;
         }
@@ -556,7 +557,7 @@ module.exports = {
         
         if (currentVersion === newestVersion) {
             const msg = `Server is already on the latest version (${currentVersion})!`;
-            console.log(msg);
+            sessionLogger.info('UpdateManager', msg);
             await interaction.edit(msg);
             return;
         }
@@ -574,7 +575,7 @@ module.exports = {
         // Check if we have valid version information
         if (!newestVersion || !currentVersion) {
             const errorMsg = `Failed to extract version information from URLs. Current: ${currentVersionUrl}, Newest: ${newestVersionUrl}`;
-            console.error(errorMsg);
+            sessionLogger.error('UpdateManager', errorMsg);
             await interaction.edit(errorMsg);
             return;
         }
@@ -675,7 +676,7 @@ module.exports = {
                 }
             }
             // If input is invalid or path cannot be determined
-            console.warn('Warning: Could not determine path from entry:', entry);
+            sessionLogger.warn('UpdateManager', 'Could not determine path from entry:', entry);
             return null;
         }
 

@@ -12,6 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const sessionLogger = require('../modules/sessionLogger');
 
 module.exports = {
     loadEventFiles: function (client) {
@@ -30,6 +31,6 @@ module.exports = {
             }
         }
 
-        console.log(`Loaded ${events} events!`); 
+        sessionLogger.info('EventLoader', `Loaded ${events} events`); 
     }
 };

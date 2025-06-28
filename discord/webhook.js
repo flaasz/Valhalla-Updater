@@ -11,6 +11,7 @@
  */
 
 const { getClient } = require('./bot');
+const sessionLogger = require('../modules/sessionLogger');
 
 module.exports = {
     /**
@@ -24,7 +25,7 @@ module.exports = {
         const channel = client.channels.cache.get(channelId);
 
         if (!channel) {
-            console.error(`Channel with ID ${channelId} not found!`);
+            sessionLogger.error('Webhook', `Channel with ID ${channelId} not found!`);
             return;
         }
 
@@ -38,7 +39,7 @@ module.exports = {
         const channel = client.channels.cache.get(channelId);
 
         if (!channel) {
-            console.error(`Channel with ID ${channelId} not found!`);
+            sessionLogger.error('Webhook', `Channel with ID ${channelId} not found!`);
             return;
         }
         try {
@@ -46,19 +47,19 @@ module.exports = {
             let webhook = webhooks.find(wh => wh.token);
 
             if (!webhook) {
-                console.log(`Creating webhook for channel ${channel.name}...`);
+                sessionLogger.info('Webhook', `Creating webhook for channel ${channel.name}...`);
                 webhook = await channel.createWebhook({
                     name: "Valhalla Updater",
                     avatar: client.user.displayAvatarURL(),
                 });
                 process.stdout.moveCursor(0, -1);
-                console.log(`Creating webhook for channel ${channel.name}... Done!`);
+                sessionLogger.info('Webhook', `Creating webhook for channel ${channel.name}... Done!`);
             }
 
             return webhook;
 
         } catch (error) {
-            console.error('Error trying to create a webhook: ', error);
+            sessionLogger.error('Webhook', 'Error trying to create a webhook:', error);
         }
     }
 };

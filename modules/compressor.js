@@ -13,6 +13,7 @@
 const AdmZip = require('adm-zip');
 const archiver = require('archiver');
 const ProgressBar = require('progress');
+const sessionLogger = require('./sessionLogger');
 const fs = require('fs');
 const path = require('path');
 const {
@@ -100,7 +101,7 @@ module.exports = {
      * @returns
      */
     compressDirectory: function (sourceDir, outPath) {
-        console.log(`Compressing ${sourceDir} to ${outPath}...`);
+        sessionLogger.info('Compressor', `Compressing ${sourceDir} to ${outPath}...`);
         const totalSize = calculateTotalSize(sourceDir);
 
         // Initialize progress bar
@@ -120,7 +121,7 @@ module.exports = {
 
             output.on('close', function () {
                 bar.update(1);
-                console.log(`${outPath} compression complete.`);
+                sessionLogger.info('Compressor', `${outPath} compression complete`);
                 resolve();
             });
 

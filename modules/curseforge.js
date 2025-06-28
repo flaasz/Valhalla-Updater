@@ -11,6 +11,7 @@
  */
 
 const axios = require('axios');
+const sessionLogger = require('./sessionLogger');
 require('dotenv').config();
 
 
@@ -37,7 +38,7 @@ module.exports = {
             //console.log(response);
             return response.data.data;
         } catch (error) {
-            console.error(error);
+            sessionLogger.error('CurseForge', 'Error getting pack data:', error);
         }
     },
 
@@ -55,7 +56,7 @@ module.exports = {
             //console.log(response);
             return response.data.data.downloadUrl;
         } catch (error) {
-            console.error(error);
+            sessionLogger.error('CurseForge', 'Error getting pack data:', error);
         }
     },
 
@@ -75,7 +76,7 @@ module.exports = {
             return response.data.data.serverPackFileId;
         } catch (error) {
             // Log specific error for debugging, but return null for flow control
-            console.error(`Error fetching server file ID for ${modPackId}/${versionId}:`, error.response ? error.response.status : error.message);
+            sessionLogger.error('CurseForge', `Error fetching server file ID for ${modPackId}/${versionId}:`, error.response ? error.response.status : error.message);
             return null;
         }
     },
@@ -102,14 +103,14 @@ module.exports = {
                     (file.fileName && file.fileName.toLowerCase().includes('server'))
                 );
                 if (serverPack) {
-                    console.log(`Found potential server pack via additional files (www) for ${modPackId}/${versionId}: ID ${serverPack.id}`);
+                    sessionLogger.info('CurseForge', `Found potential server pack via additional files (www) for ${modPackId}/${versionId}: ID ${serverPack.id}`);
                     return serverPack.id;
                 }
             }
             return null; // No additional files or no file matching the heuristic
         } catch (error) {
             // Log error specifically for the www endpoint attempt
-            console.error(`Error fetching additional server file ID for ${modPackId}/${versionId} using www URL + User-Agent:`, error.response ? error.response.status : error.message);
+            sessionLogger.error('CurseForge', `Error fetching additional server file ID for ${modPackId}/${versionId} using www URL + User-Agent:`, error.response ? error.response.status : error.message);
             return null;
         }
     },
@@ -138,7 +139,7 @@ module.exports = {
             });
             return response.data.data;
         } catch (error) {
-            console.error(error);
+            sessionLogger.error('CurseForge', 'Error getting pack data:', error);
         }
     },
 
