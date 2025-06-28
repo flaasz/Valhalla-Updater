@@ -14,6 +14,7 @@ const {
 } = require("fs-extra");
 const sharp = require('sharp');
 const axios = require('axios');
+const sessionLogger = require("../modules/sessionLogger");
 const {
     getClient
 } = require("../discord/bot");
@@ -55,7 +56,7 @@ module.exports = {
      */
     start: async function (options) {
 
-        if (!options.roleChannelId) return console.log("[WARNING] Set role assigner up in /config/config.json!");
+        if (!options.roleChannelId) return sessionLogger.warn('RoleAssigner', "Set role assigner up in /config/config.json!");
 
         const client = await getClient();
 
@@ -72,11 +73,11 @@ module.exports = {
 
                     if (guildMember.roles.cache.has(role.id)) {
                         await guildMember.roles.remove(role);
-                        console.log(`${interaction.user.globalName} disabled role for ${server.name}`);
+                        sessionLogger.info('RoleAssigner', `${interaction.user.globalName} disabled role for ${server.name}`);
                         replyMessage = `Role for ${server.name} **removed**!`;
                     } else {
                         await guildMember.roles.add(role);
-                        console.log(`${interaction.user.globalName} enabled role for ${server.name}`);
+                        sessionLogger.info('RoleAssigner', `${interaction.user.globalName} enabled role for ${server.name}`);
                         replyMessage = `Role for ${server.name} **enabled**!`;
                     }
 
@@ -87,7 +88,7 @@ module.exports = {
                     await sleep(2000);
                     await response.delete();
                 } catch (error) {
-                    console.error(error);
+                    sessionLogger.error('RoleAssigner', 'Error during role assignment:', error);
                 }
             }
         });
@@ -166,7 +167,7 @@ module.exports = {
 
         async function generateNewRoles(serverList) {
             for (let server of serverList) {
-                console.log(`Generating new role for ${server.name}`);
+                sessionLogger.info('RoleAssigner', `Generating new role for ${server.name}`);
                 const channel = await client.channels.fetch(options.roleChannelId);
 
                 const newRole = await channel.guild.roles.create({
@@ -187,7 +188,7 @@ module.exports = {
         async function generateEmoji(server) {
             if (!server.hostname) return;
             const channel = await client.channels.fetch(options.roleChannelId);
-            console.log(`Creating new emoji for ${server.name}!`);
+            sessionLogger.info('RoleAssigner', `Creating new emoji for ${server.name}!`);
             let emojiURL = "";
 
             if (server.platform === 'feedthebeast') {

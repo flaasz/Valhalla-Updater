@@ -15,12 +15,13 @@ const {
 const {
     deployCommands
 } = require('../deploy');
+const sessionLogger = require('../../modules/sessionLogger');
 
 module.exports = {
     name: Events.ClientReady,
     once: true,
     async execute(client) {
-        console.log(`Ready! Logged in as ${client.user.tag}`);
+        sessionLogger.info('DiscordBot', `Ready! Logged in as ${client.user.tag}`);
 
         await deployCommands(client.user.id);
     }

@@ -24,6 +24,7 @@ const {
     active,
     staffChannelId
 } = require("../config/config.json").discord;
+const sessionLogger = require("../modules/sessionLogger");
 
 module.exports = {
     name: 'checkForUpdates',
@@ -42,7 +43,7 @@ module.exports = {
     },
 
     updateCheck: async function () {
-        console.log("Checking for updates...");
+        sessionLogger.info('CheckForUpdates', "Checking for updates...");
 
         let servers = await mongo.getServers();
         let numberOfUpdates = 0;
@@ -72,11 +73,11 @@ module.exports = {
             }
 
             if (server.fileID === newestUpdateId) {
-                console.log(`No updates found for ${server.name}.`);
+                sessionLogger.info('CheckForUpdates', `No updates found for ${server.name}.`);
             } else {
                 const newVersionNumber = functions.getVersion(packManifest.name);
 
-                console.log(`Update found for ${server.name}! (v${server.modpack_version} -> v${newVersionNumber})`);
+                sessionLogger.info('CheckForUpdates', `Update found for ${server.name}! (v${server.modpack_version} -> v${newVersionNumber})`);
                 updateRequired = true;
                 numberOfUpdates++;
 

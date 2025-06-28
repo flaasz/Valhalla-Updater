@@ -14,6 +14,7 @@ const functions = require("../modules/functions");
 const mongo = require("../modules/mongo");
 const pterodactyl = require("../modules/pterodactyl");
 const velocityMetrics = require("../modules/velocityMetrics");
+const sessionLogger = require("../modules/sessionLogger");
 const {
     alertCakeDrop
 } = require("../config/messages.json");
@@ -43,7 +44,7 @@ module.exports = {
         const randomNumber = Math.random();
 
         if (randomNumber < 1 / options.chance) {
-            console.log("Attempting to drop cake... Dropping cake!");
+            sessionLogger.info('CakeDrop', "Attempting to drop cake... Dropping cake!");
 
             let cakeAmount = Math.floor(Math.random() * (options.max - options.min + 1)) + options.min;
 
@@ -70,9 +71,9 @@ module.exports = {
                     await functions.sleep(100);
                 }
             }
-            console.log(`Dropped ${totalAmount} cakes to ${totalPlayers} players!`);
+            sessionLogger.info('CakeDrop', `Dropped ${totalAmount} cakes to ${totalPlayers} players!`);
         } else {
-            console.log("Attempting to drop cake... No cake dropped.");
+            sessionLogger.info('CakeDrop', "Attempting to drop cake... No cake dropped.");
         }
     },
 
@@ -100,7 +101,7 @@ module.exports = {
                 await functions.sleep(100);
             }
         }
-        console.log(`Dropped ${totalAmount} cakes to ${totalPlayers} players!`);
+        sessionLogger.info('CakeDrop', `Dropped ${totalAmount} cakes to ${totalPlayers} players!`);
         return `Done! Dropped **${totalAmount}** cakes to **${totalPlayers}** players!`;
     }
 

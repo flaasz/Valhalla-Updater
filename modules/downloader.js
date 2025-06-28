@@ -15,6 +15,7 @@ const fs = require('fs');
 const path = require('path');
 const FormData = require('form-data');
 const progress = require('progress');
+const sessionLogger = require('./sessionLogger');
 
 
 // Promisify pipeline for better error handling
@@ -62,7 +63,7 @@ module.exports = {
             writer.on('error', reject);
         });
 
-        console.log(`${fileName} downloaded successfully.`);
+        sessionLogger.info('Downloader', `${fileName} downloaded successfully`);
     },
 
     /**
@@ -114,7 +115,7 @@ module.exports = {
         // Wait for all downloads to complete
         await Promise.all(downloadPromises);
     
-        console.log(`List downloaded successfully.`);
+        sessionLogger.info('Downloader', `List downloaded successfully`);
     },
 
     /**
@@ -151,9 +152,9 @@ module.exports = {
                     ...formData.getHeaders()
                 }
             });
-            console.log(`${fileName} uploaded successfully.`);
+            sessionLogger.info('Downloader', `${fileName} uploaded successfully`);
         } catch (error) {
-            console.error('Error uploading file:', error);
+            sessionLogger.error('Downloader', 'Error uploading file:', error);
         }
     }
 };

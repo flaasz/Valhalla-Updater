@@ -12,6 +12,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const sessionLogger = require('./sessionLogger');
 require('dotenv').config();
 
 
@@ -30,9 +31,9 @@ function generateEnvFile() {
 
     fs.writeFileSync(envFilePath, envContent.trim(), (err) => {
         if (err) {
-            return console.error('Error writing .env file:', err);
+            return sessionLogger.error('Initializer', 'Error writing .env file:', err);
         }
-        console.log('.env file created successfully!');
+        sessionLogger.info('Initializer', '.env file created successfully!');
     });
 }
 
@@ -54,9 +55,9 @@ function generateConfigFiles() {
 
     fs.writeFileSync(messagesFilePath, JSON.stringify(messagesContent, null, 4), (err) => {
         if (err) {
-            return console.error('Error writing messages.json file:', err);
+            return sessionLogger.error('Initializer', 'Error writing messages.json file:', err);
         }
-        console.log('messages.json file created successfully!');
+        sessionLogger.info('Initializer', 'messages.json file created successfully!');
     });
 
     const configContent = {
@@ -90,19 +91,19 @@ function generateConfigFiles() {
 
     fs.writeFileSync(configFilePath, JSON.stringify(configContent, null, 4), (err) => {
         if (err) {
-            return console.error('Error writing config.json file:', err);
+            return sessionLogger.error('Initializer', 'Error writing config.json file:', err);
         }
-        console.log('config.json file created successfully!');
+        sessionLogger.info('Initializer', 'config.json file created successfully!');
     });
 }
 
 if (!fs.existsSync(path.join(__dirname, '../.env'))) {
-    console.error("No .env file found! Generating one...");
+    sessionLogger.warn('Initializer', 'No .env file found! Generating one...');
     generateEnvFile();
 }
 
 if (!fs.existsSync(path.join(__dirname, '../config/config.json')) || !fs.existsSync(path.join(__dirname, '../config/messages.json'))) {
-    console.error("No config files found! Generating them...");
+    sessionLogger.warn('Initializer', 'No config files found! Generating them...');
     generateConfigFiles();
 }
 
@@ -113,7 +114,7 @@ schedulerManager.loadSchedulers(true);
 let configFine = true;
 for (const key of envVars) {
     if (!process.env[key]) {
-        console.error(`Please fill out the .env file! Missing: ${key}`);
+        sessionLogger.error('Initializer', `Please fill out the .env file! Missing: ${key}`);
         configFine = false;
     }
 }
@@ -122,7 +123,7 @@ let messages = require("../config/messages.json");
 
 for (let key in messages) {
     if (messages[key] === null || messages[key] === '') {
-        console.error(`Please fill out the /config/messages.json file! Missing: ${key}`);
+        sessionLogger.error('Initializer', `Please fill out the /config/messages.json file! Missing: ${key}`);
         configFine = false;
         break;
     }
@@ -142,7 +143,7 @@ function checkConfig(config) {
             checkConfig(value);
         } else {
             if (value === null || value === '') {
-                console.error(`Please fill out the /config/config.json file! Missing: ${key}`);
+                sessionLogger.error('Initializer', `Please fill out the /config/config.json file! Missing: ${key}`);
                 configFine = false;
                 break;
             }
@@ -154,4 +155,4 @@ function checkConfig(config) {
 checkConfig(config);
 
 if (!configFine) process.exit(0);
-console.log("Initializer complete!");
+sessionLogger.info('Initializer', 'Initializer complete!');

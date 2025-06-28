@@ -14,6 +14,7 @@ var fs = require('fs');
 const {
     downloadList
 } = require('./downloader');
+const sessionLogger = require('./sessionLogger');
 
 module.exports = {
     /**
@@ -29,7 +30,8 @@ module.exports = {
                     force: true
                 });
             }
-        }        console.log("Removed old files");
+        }
+        sessionLogger.info('Merger', "Removed old files");
         for (let path of changeList.additions) {
             try {
                 const sourcePath = `${dir}/compare/new${path}`;
@@ -47,14 +49,14 @@ module.exports = {
                         recursive: true
                     });
                 } else {
-                    console.log(`Warning: Source path does not exist: ${sourcePath}`);
+                    sessionLogger.warn('Merger', `Source path does not exist: ${sourcePath}`);
                 }
             } catch (error) {
-                console.error(`Error copying file ${path}: ${error.message}`);
+                sessionLogger.error('Merger', `Error copying file ${path}: ${error.message}`);
                 // Continue with next file instead of failing the entire update
             }
         }
-        console.log("Added new files");
+        sessionLogger.info('Merger', "Added new files");
     },
 
     /**
@@ -72,12 +74,12 @@ module.exports = {
                 });
             }
         }
-        console.log("Removed old files");
+        sessionLogger.info('Merger', "Removed old files");
         let toDownload = newManifest.files.filter(obj => {
             const fullPath = `${obj.path}${obj.name}`;
             return changeList.additions.includes(fullPath);
         });
         await downloadList(toDownload, dir);
-        console.log("Added new files");
+        sessionLogger.info('Merger', "Added new files");
     }
 };

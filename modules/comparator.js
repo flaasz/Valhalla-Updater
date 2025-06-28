@@ -11,6 +11,7 @@
  */
 
 const dircompare = require('dir-compare');
+const sessionLogger = require('./sessionLogger');
 
 const options = {
     compareContent: true,
@@ -37,13 +38,13 @@ module.exports = {
         };
         res.diffSet.forEach(dif => {
             if (dif.state === "left") {
-                console.log(`Difference - delete: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, state: ${dif.state}`);
+                sessionLogger.debug('Comparator', `Difference - delete: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, state: ${dif.state}`);
                 changeList.deletions.push(dif.relativePath + "/" + dif.name1);
             } else if (dif.state === "right") {
-                console.log(`Difference - add: ${dif.relativePath}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
+                sessionLogger.debug('Comparator', `Difference - add: ${dif.relativePath}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
                 changeList.additions.push(dif.relativePath + "/" + dif.name2);
             } else if (dif.state === "equal") {} else {
-                console.log(`Difference - replace: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
+                sessionLogger.debug('Comparator', `Difference - replace: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
                 changeList.deletions.push(dif.relativePath + "/" + dif.name1);
                 changeList.additions.push(dif.relativePath + "/" + dif.name2);
             }
@@ -71,13 +72,13 @@ module.exports = {
         };
         res.diffSet.forEach(dif => {
             if (dif.state === "left") {
-                console.log(`Custom file: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, state: ${dif.state}`);
+                sessionLogger.debug('Comparator', `Custom file: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, state: ${dif.state}`);
                 customChanges.customFiles.push(dif.relativePath + "/" + dif.name1);
             } else if (dif.state === "right") {
-                console.log(`Missing file: ${dif.relativePath}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
+                sessionLogger.debug('Comparator', `Missing file: ${dif.relativePath}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
                 customChanges.missingFiles.push(dif.relativePath + "/" + dif.name2);
             } else if (dif.state === "equal") {} else {
-                console.log(`Custom file - edited: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
+                sessionLogger.debug('Comparator', `Custom file - edited: ${dif.relativePath}, name1: ${dif.name1}, type1: ${dif.type1}, name2: ${dif.name2}, type2: ${dif.type2}, state: ${dif.state}`);
                 customChanges.editedFiles.push(dif.relativePath + "/" + dif.name2);
             }
 
@@ -104,20 +105,20 @@ module.exports = {
         let changelog = await this.compareManifest(customManifest, originalManifest);
 
         changelog.leftOnly.forEach(dif => {
-            console.log(`Custom file: ${dif.path}, name1: ${dif.name}`);
+            sessionLogger.debug('Comparator', `Custom file: ${dif.path}, name1: ${dif.name}`);
             customChanges.customFiles.push(dif.path + dif.name);
         });
 
         changelog.rightOnly.forEach(dif => {
-            console.log(`Missing file: ${dif.path}, name2: ${dif.name}`);
+            sessionLogger.debug('Comparator', `Missing file: ${dif.path}, name2: ${dif.name}`);
             customChanges.missingFiles.push(dif.path + dif.name);
         });
 
         changelog.different.forEach(dif => {
-            console.log(`Custom file - edited: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
+            sessionLogger.debug('Comparator', `Custom file - edited: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
             customChanges.editedFiles.push(dif.left.path + dif.left.name);
         });
-        console.log(customChanges);
+        sessionLogger.debug('Comparator', 'Custom changes found:', customChanges);
         return customChanges;
     },
 
@@ -136,17 +137,17 @@ module.exports = {
         let changelog = await this.compareManifest(customManifest, originalManifest);
 
         changelog.leftOnly.forEach(dif => {
-            console.log(`Difference - delete: ${dif.path}, name1: ${dif.name}`);
+            sessionLogger.debug('Comparator', `Difference - delete: ${dif.path}, name1: ${dif.name}`);
             changeList.deletions.push(dif.path + dif.name);
         });
 
         changelog.rightOnly.forEach(dif => {
-            console.log(`Difference - add: ${dif.path}, name2: ${dif.name}`);
+            sessionLogger.debug('Comparator', `Difference - add: ${dif.path}, name2: ${dif.name}`);
             changeList.additions.push(dif.path + dif.name);
         });
 
         changelog.different.forEach(dif => {
-            console.log(`Difference - replace: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
+            sessionLogger.debug('Comparator', `Difference - replace: ${dif.left.path}, name1: ${dif.left.name}, name2: ${dif.right.name}`);
             changeList.deletions.push(dif.left.path + dif.left.name);
             changeList.additions.push(dif.right.path + dif.right.name);
         });
@@ -213,10 +214,9 @@ module.exports = {
  * @param {object} result Result of the comparison.
  */
 function print(result) {
-    console.log('Directories are %s', result.same ? 'identical' : 'different');
+    sessionLogger.debug('Comparator', `Directories are ${result.same ? 'identical' : 'different'}`);
 
-    console.log('Statistics - equal entries: %s, distinct entries: %s, left only entries: %s, right only entries: %s, differences: %s',
-        result.equal, result.distinct, result.left, result.right, result.differences);
+    sessionLogger.debug('Comparator', `Statistics - equal entries: ${result.equal}, distinct entries: ${result.distinct}, left only entries: ${result.left}, right only entries: ${result.right}, differences: ${result.differences}`);
 
     //result.diffSet.forEach(dif => console.log('Difference - path: %s, name1: %s, type1: %s, name2: %s, type2: %s, state: %s',
     //dif.relativePath, dif.name1, dif.type1, dif.name2, dif.type2, dif.state));

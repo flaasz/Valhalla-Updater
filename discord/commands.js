@@ -13,6 +13,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Collection } = require('discord.js');
+const sessionLogger = require('../modules/sessionLogger');
 
 module.exports = {
     loadCommandFiles: function (client) {
@@ -30,9 +31,9 @@ module.exports = {
             if ('data' in command && 'execute' in command || 'autocomplete' in command) {
                 client.commands.set(command.data.name, command);
             } else {
-                console.log(`[WARNING] The command at ${filePath} is missing a required "data" or "execute" property.`);
+                sessionLogger.warn('CommandLoader', `The command at ${filePath} is missing a required "data" or "execute" property`);
             }
         }
-        console.log(`Loaded ${commands} commands!`);
+        sessionLogger.info('CommandLoader', `Loaded ${commands} commands`);
     }
 };

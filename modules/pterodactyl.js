@@ -12,6 +12,7 @@
 
 const axios = require('axios');
 const progress = require('progress');
+const sessionLogger = require('./sessionLogger');
 require('dotenv').config();
 
 
@@ -41,7 +42,46 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
+        }
+    },
+
+    /**
+     * Gets server uptime in hours
+     * @param {string} serverID Id of the server on Pterodactyl.
+     * @returns {number} Server uptime in hours, or 0 if server is not running
+     */
+    getServerUptime: async function (serverID) {
+        try {
+            const status = await this.getStatus(serverID);
+            
+            if (!status || status.attributes.current_state !== 'running') {
+                return 0; // Server not running = 0 uptime
+            }
+            
+            const resources = status.attributes.resources || {};
+            
+            // Pterodactyl returns uptime in milliseconds
+            if (resources.uptime !== undefined) {
+                const uptimeMs = resources.uptime;
+                const uptimeHours = Math.floor(uptimeMs / (1000 * 3600));
+                return uptimeHours;
+            }
+            
+            // Fallback: check for seconds format (less common)
+            if (resources.uptime_in_seconds !== undefined) {
+                const uptimeSeconds = resources.uptime_in_seconds;
+                const uptimeHours = Math.floor(uptimeSeconds / 3600);
+                return uptimeHours;
+            }
+            
+            // No uptime field found - log for debugging
+            sessionLogger.warn('Pterodactyl', `Server ${serverID}: No uptime field found in API response`);
+            return 0;
+            
+        } catch (error) {
+            sessionLogger.error('Pterodactyl', `Error getting uptime for server ${serverID}`, error.message);
+            return 0; // Return 0 on error to be safe
         }
     },
 
@@ -61,7 +101,7 @@ module.exports = {
             //console.log(response);
             return response.data.attributes.url;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -78,7 +118,7 @@ module.exports = {
             //console.log(response);
             return response.data.attributes.url;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -98,7 +138,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -120,7 +160,7 @@ module.exports = {
             //console.log(response);
             return response.data.attributes.name;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -142,7 +182,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -164,7 +204,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -188,7 +228,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -208,7 +248,7 @@ module.exports = {
             return response.data;
         } catch (error) {
             if (error.response.status != 502) {
-                console.log(error.response.data);
+                sessionLogger.error('Pterodactyl', 'Command execution failed:', error.response.data);
             }
         }
     },
@@ -227,7 +267,7 @@ module.exports = {
             return response.data;
         }
         catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     }, 
 
@@ -244,7 +284,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -262,7 +302,7 @@ module.exports = {
             //console.log(response);
             return response.data;
         } catch (error) {
-            console.error(error.response.data);
+            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
         }
     },
 
@@ -299,12 +339,12 @@ module.exports = {
                     }
                     if (iterator >= timeToKill) {
                         progressBar.update(0.99);
-                        console.log("\nThis is taking longer than expected...");
+                        sessionLogger.warn('Pterodactyl', 'Server shutdown taking longer than expected...');
                         process.stdout.moveCursor(76, -2);
 
                         if (status.attributes.resources.cpu_absolute < 10) {
                             progressBar.update(1);
-                            console.log("\nServer is idling. Killing it...");
+                            sessionLogger.info('Pterodactyl', 'Server is idling. Killing it...');
                             await this.sendPowerAction(serverID, "kill");
                             clearInterval(shutdownSequence);
                             resolve();
@@ -343,7 +383,7 @@ module.exports = {
                 capacity: 4 // Default safe concurrent server capacity (configurable via maxConcurrentReboots)
             }));
         } catch (error) {
-            console.error('Error fetching nodes:', error.response?.data || error.message);
+            sessionLogger.error('Pterodactyl', 'Error fetching nodes:', error.response?.data || error.message);
             return [];
         }
     },
@@ -361,7 +401,7 @@ module.exports = {
             
             return response.data.attributes.node;
         } catch (error) {
-            console.error(`Error getting node for server ${serverID}:`, error.response?.data || error.message);
+            sessionLogger.error('Pterodactyl', `Error getting node for server ${serverID}:`, error.response?.data || error.message);
             return null;
         }
     }

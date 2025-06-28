@@ -12,10 +12,20 @@
 
 require("./modules/errorHandler");
 require("./modules/initializer");
+const sessionLogger = require("./modules/sessionLogger");
 const scheduler = require("./managers/schedulerManager");
 const api = require("./managers/apiManager");
 const discord = require("./discord/bot");
 
+sessionLogger.info('Server', 'Valhalla Updater initializing...');
+
+sessionLogger.info('Server', 'Starting Discord bot...');
 discord.launchBot();
+
+sessionLogger.info('Server', 'Starting API server...');
 api.startServer();
+
+sessionLogger.info('Server', 'Loading schedulers...');
 scheduler.loadSchedulers();
+
+sessionLogger.info('Server', 'All services started successfully!');

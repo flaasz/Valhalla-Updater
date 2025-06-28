@@ -4,6 +4,23 @@ const {
 } = require('discord.js');
 const timeManager = require('../../modules/timeManager');
 const mongo = require('../../modules/mongo');
+const sessionLogger = require('../../modules/sessionLogger');
+
+// Helper function to safely reply to Discord interactions - NEVER throws
+async function safeEditReply(interaction, content) {
+    try {
+        if (!interaction) return; // Safety check
+        return await interaction.editReply(content);
+    } catch (error) {
+        try {
+            sessionLogger.warn('ScheduleRebootCommand', 'Failed to send Discord reply (token likely expired)', error.message);
+        } catch (logError) {
+            // Even logging failed - fallback to console (guaranteed to work)
+            console.warn('Discord reply failed AND logging failed:', error.message, logError.message);
+        }
+        // Never rethrow - this function must NEVER crash the caller
+    }
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -36,6 +53,14 @@ module.exports = {
                         .setRequired(false)
                         .setMinValue(1)
                         .setMaxValue(30)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('abort')
+                .setDescription('Abort current reboot sequence (EMERGENCY)'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('cleanup')
+                .setDescription('Emergency cleanup of stuck reboot state (EMERGENCY)'))
         .setDMPermission(false),
 
     async execute(interaction) {
@@ -60,12 +85,28 @@ module.exports = {
                 case 'history':
                     await this.showRebootHistory(interaction);
                     break;
+                case 'abort':
+                    await this.abortReboot(interaction);
+                    break;
+                case 'cleanup':
+                    await this.emergencyCleanup(interaction);
+                    break;
                 default:
                     await interaction.editReply('Unknown subcommand!');
             }
         } catch (error) {
-            console.error('Error in schedule-reboot command:', error.message);
-            await interaction.editReply('An error occurred while processing the command.');
+            sessionLogger.error('ScheduleRebootCommand', `Error in schedule-reboot ${subcommand}`, error.message);
+            
+            // Try to respond, but don't crash if Discord interaction has expired
+            if (interaction.deferred || interaction.replied) {
+                await safeEditReply(interaction, 'An error occurred while processing the command.');
+            } else {
+                try {
+                    await interaction.reply('An error occurred while processing the command.');
+                } catch (discordError) {
+                    sessionLogger.warn('ScheduleRebootCommand', 'Failed to send error response to Discord', discordError.message);
+                }
+            }
         }
     },
 
@@ -154,8 +195,8 @@ module.exports = {
             await interaction.editReply({ embeds: [embed] });
             
         } catch (error) {
-            console.error('Error forcing reboot:', error.message);
-            await interaction.editReply('❌ Failed to trigger reboot sequence.');
+            sessionLogger.error('ScheduleRebootCommand', 'Error forcing reboot', error.message);
+            await safeEditReply(interaction, '❌ Failed to trigger reboot sequence.');
         }
     },
 
@@ -258,5 +299,55 @@ module.exports = {
         }
         
         await interaction.editReply({ embeds: [embed] });
+    },
+
+    async abortReboot(interaction) {
+        try {
+            const rebootScheduler = require('../../schedulers/rebootScheduler');
+            const success = await rebootScheduler.abortRebootSequence(
+                `Manual abort by ${interaction.user.username} (${interaction.user.id})`
+            );
+            
+            const embed = new EmbedBuilder()
+                .setColor(success ? 0xffa500 : 0xff0000)
+                .setTitle(success ? '🛑 Reboot Sequence Aborted' : '❌ Abort Failed')
+                .setDescription(success ? 
+                    'The current reboot sequence has been safely aborted.' : 
+                    'Failed to abort reboot sequence or no reboot was in progress.')
+                .addFields(
+                    { name: 'Requested By', value: interaction.user.username, inline: true },
+                    { name: 'Time', value: new Date().toISOString(), inline: true }
+                )
+                .setTimestamp();
+            
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('Error aborting reboot:', error.message);
+            await interaction.editReply('❌ Failed to abort reboot sequence.');
+        }
+    },
+
+    async emergencyCleanup(interaction) {
+        try {
+            const rebootScheduler = require('../../schedulers/rebootScheduler');
+            const success = await rebootScheduler.emergencyCleanup();
+            
+            const embed = new EmbedBuilder()
+                .setColor(success ? 0x00ff00 : 0xff0000)
+                .setTitle(success ? '🚨 Emergency Cleanup Completed' : '❌ Cleanup Failed')
+                .setDescription(success ? 
+                    'Emergency cleanup has been performed. All stuck reboot states have been cleared.' : 
+                    'Emergency cleanup failed. Manual intervention may be required.')
+                .addFields(
+                    { name: 'Requested By', value: interaction.user.username, inline: true },
+                    { name: 'Time', value: new Date().toISOString(), inline: true }
+                )
+                .setTimestamp();
+            
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('Error during emergency cleanup:', error.message);
+            await interaction.editReply('❌ Emergency cleanup failed.');
+        }
     }
 };
