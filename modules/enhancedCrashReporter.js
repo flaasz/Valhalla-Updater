@@ -255,9 +255,98 @@ PID: ${process.pid}
         }
     }
 
+    sendCrashNotification(error) {
+        try {
+            // Determine crash severity
+            const severity = this.classifyCrashSeverity(error);
+            
+            // Prepare crash data for Discord notification
+            const crashData = {
+                error: {
+                    name: error.name || 'UnknownError',
+                    message: error.message || 'No error message available',
+                },
+                stack: error.stack,
+                severity: severity,
+                systemInfo: this.getSystemInfo(),
+                memoryInfo: process.memoryUsage(),
+                timestamp: new Date().toISOString(),
+                uptime: Math.floor((Date.now() - this.startTime) / 1000),
+                memoryTrend: this.getMemoryTrend()
+            };
+            
+            // Send notification asynchronously (fire and forget)
+            setImmediate(async () => {
+                try {
+                    const { sendCriticalCrash } = require('./crashNotificationManager');
+                    await sendCriticalCrash(crashData);
+                } catch (notificationError) {
+                    // Notification failures cannot crash the crash reporter
+                    console.error('[CRASH REPORTER] Discord notification failed:', notificationError.message);
+                }
+            });
+            
+        } catch (err) {
+            // Crash notification failures cannot break crash reporting
+            console.error('[CRASH REPORTER] Notification preparation failed:', err.message);
+        }
+    }
+    
+    /**
+     * Classify crash severity for notification purposes
+     */
+    classifyCrashSeverity(error) {
+        try {
+            const errorName = (error.name || '').toLowerCase();
+            const errorMessage = (error.message || '').toLowerCase();
+            const stack = (error.stack || '').toLowerCase();
+            
+            // CRITICAL: System-level failures, security issues, data corruption
+            if (errorName.includes('systemerror') ||
+                errorMessage.includes('eacces') ||
+                errorMessage.includes('enospc') ||
+                errorMessage.includes('corrupted') ||
+                errorMessage.includes('segmentation fault') ||
+                stack.includes('mongodb') ||
+                stack.includes('database')) {
+                return 'CRITICAL';
+            }
+            
+            // HIGH: Service failures, network failures, important components
+            if (errorName.includes('referenceerror') ||
+                errorName.includes('typeerror') ||
+                errorMessage.includes('discord') ||
+                errorMessage.includes('pterodactyl') ||
+                errorMessage.includes('connection') ||
+                errorMessage.includes('timeout') ||
+                stack.includes('schedulermanager') ||
+                stack.includes('bot.js')) {
+                return 'HIGH';
+            }
+            
+            // MEDIUM: Parse errors, validation errors, recoverable issues
+            if (errorName.includes('syntaxerror') ||
+                errorName.includes('validationerror') ||
+                errorMessage.includes('parse') ||
+                errorMessage.includes('invalid')) {
+                return 'MEDIUM';
+            }
+            
+            // LOW: Everything else
+            return 'LOW';
+            
+        } catch (err) {
+            // If severity classification fails, default to HIGH for safety
+            return 'HIGH';
+        }
+    }
+
     handleCrash(error) {
         const timestamp = this.formatTimestamp();
         const filename = `crash_${timestamp}.log`;
+        
+        // Send Discord notification FIRST (before file operations)
+        this.sendCrashNotification(error);
         
         // Layer 1: Try detailed crash report in crash-logs directory
         try {

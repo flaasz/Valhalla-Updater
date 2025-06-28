@@ -2,6 +2,7 @@ const mongo = require("../modules/mongo");
 const { EmbedBuilder } = require("discord.js");
 const crypto = require('crypto');
 const sessionLogger = require("../modules/sessionLogger");
+const { processServerUpdate, getServerStatus } = require("../modules/serverCrashDetector");
 
 module.exports = {
     name: 'serverStatusMonitor',
@@ -18,10 +19,10 @@ module.exports = {
         sessionLogger.info('ServerStatusMonitor', `Server Status Monitor started - checking every ${options.interval} seconds`);
         
         // Start the main update loop - convert seconds to milliseconds
-        setInterval(this.checkAndUpdateEmbeds, options.interval * 1000);
+        setInterval(() => this.checkAndUpdateEmbeds(), options.interval * 1000);
         
         // Run initial check after a short delay
-        setTimeout(this.checkAndUpdateEmbeds, options.interval * 1000);
+        setTimeout(() => this.checkAndUpdateEmbeds(), options.interval * 1000);
     },
 
     /**
@@ -34,6 +35,9 @@ module.exports = {
             await require('../modules/functions').sleep(10);
             let shardList = await mongo.getShards();
             
+            // Process crash detection for all servers
+            await this.processCrashDetection(serverList, shardList);
+            
             // Get all live embeds from database  
             let liveEmbeds = await mongo.getLiveEmbeds();
             
@@ -41,7 +45,7 @@ module.exports = {
                 return; // No live embeds to monitor
             }
             
-            // Generate current state hash
+            // Generate current state hash (now includes crash status)
             const currentHash = generateServerStateHash(serverList, shardList);
             
             // Check if ANY embed needs updating (compare against any stored hash)
@@ -61,6 +65,25 @@ module.exports = {
             }
         } catch (error) {
             sessionLogger.error('ServerStatusMonitor', 'Error in checkAndUpdateEmbeds:', error.message);
+        }
+    },
+
+    /**
+     * Process crash detection for all servers
+     */
+    processCrashDetection: async function (serverList, shardList) {
+        try {
+            for (const server of serverList) {
+                if (server.excludeFromServerList) continue;
+                
+                // Check if server is online (in shard list)
+                const isOnline = shardList.some(shard => shard.name === server.name);
+                
+                // Process crash detection for this server
+                await processServerUpdate(server, isOnline);
+            }
+        } catch (error) {
+            sessionLogger.error('ServerStatusMonitor', 'Error in crash detection processing:', error.message);
         }
     }
 };
@@ -156,14 +179,32 @@ function generateServerEmbed(serverList, shardList) {
         for (let s of versionObj[key]) {
             var statusEmoji = "🔴";
 
-            if (shardList.some(obj => obj.name === s.name)) {
+            // Check if server is online
+            const isOnline = shardList.some(obj => obj.name === s.name);
+            if (isOnline) {
                 onlineCount++;
                 statusEmoji = "🟢";
             }
 
+            // Get crash status from crash detector
+            const crashStatus = getServerStatus(s.serverId);
+            let crashStatusText = "";
+            
+            if (crashStatus) {
+                // Override emoji based on crash status
+                if (crashStatus.currentState === 'starting' && crashStatus.recentCrashes > 0) {
+                    statusEmoji = "🟡"; // Yellow for crashed but restarting
+                } else if (crashStatus.recentCrashes >= 3) {
+                    statusEmoji = "🔥"; // Fire emoji for crash loop
+                }
+                
+                // Get status text (e.g., "(CRASHED, starting back!)")
+                crashStatusText = crashStatus.statusText || "";
+            }
+
             if (s.tag == "PLUS") statusEmoji = "";
             if (!excludedTags.includes(s.tag) && !s.early_access) {
-                str += `- **${s.tag.toUpperCase()} | ${s.name}** ${statusEmoji}\n ${s.tag.toLowerCase()}.valhallamc.io *(v.${s.modpack_version})*\n`;
+                str += `- **${s.tag.toUpperCase()} | ${s.name}** ${statusEmoji}${crashStatusText}\n ${s.tag.toLowerCase()}.valhallamc.io *(v.${s.modpack_version})*\n`;
             }
         }
 
@@ -188,14 +229,23 @@ function generateServerEmbed(serverList, shardList) {
  */
 function generateServerStateHash(serverList, shardList) {
     const stateData = {
-        servers: serverList.map(server => ({
-            tag: server.tag,
-            name: server.name,
-            modpack_version: server.modpack_version,
-            server_version: server.server_version,
-            excludeFromServerList: server.excludeFromServerList,
-            early_access: server.early_access
-        })),
+        servers: serverList.map(server => {
+            const crashStatus = getServerStatus(server.serverId);
+            return {
+                tag: server.tag,
+                name: server.name,
+                modpack_version: server.modpack_version,
+                server_version: server.server_version,
+                excludeFromServerList: server.excludeFromServerList,
+                early_access: server.early_access,
+                // Include crash status in hash for real-time updates
+                crashState: crashStatus ? {
+                    currentState: crashStatus.currentState,
+                    recentCrashes: crashStatus.recentCrashes,
+                    statusText: crashStatus.statusText
+                } : null
+            };
+        }),
         shards: shardList.map(shard => ({
             name: shard.name
         }))
