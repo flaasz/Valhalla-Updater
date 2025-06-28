@@ -317,32 +317,27 @@ class CrashNotificationManager {
                 return false;
             }
             
-            // Try to get Discord client
-            const { getClient } = require('../discord/bot');
-            const client = await getClient();
+            const { sendWebhook } = require('../discord/webhook');
             
-            if (!client || !client.isReady()) {
-                sessionLogger.warn('CrashNotificationManager', 'Discord client not ready');
-                return false;
+            // Prepare webhook message
+            const webhookMessage = {
+                username: 'Valhalla Crash Monitor',
+                avatarURL: 'https://cdn.discordapp.com/emojis/1068771797878722560.webp', // Use existing emoji
+                embeds: embed ? [embed] : []
+            };
+            
+            // If no embed, send a text fallback
+            if (!embed) {
+                webhookMessage.content = '⚠️ Crash detected but notification formatting failed';
             }
             
-            const channel = await client.channels.fetch(channelId);
-            if (!channel) {
-                sessionLogger.error('CrashNotificationManager', `Channel ${channelId} not found`);
-                return false;
-            }
-            
-            // Send the notification
-            if (embed) {
-                await channel.send({ embeds: [embed] });
-            } else {
-                await channel.send('⚠️ Crash detected but notification formatting failed');
-            }
+            // Send via webhook
+            await sendWebhook(channelId, webhookMessage);
             
             return true;
             
         } catch (err) {
-            sessionLogger.error('CrashNotificationManager', 'Discord notification failed:', err.message);
+            sessionLogger.error('CrashNotificationManager', 'Webhook notification failed:', err.message);
             return false;
         }
     }
