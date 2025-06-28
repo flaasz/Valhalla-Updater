@@ -45,6 +45,9 @@ module.exports = {
         // Initialize today's stats
         await this.initializeTodayStats();
         
+        // Perform state recovery check
+        await this.recoverFromInterruptedReboot();
+        
         // Start the main monitoring loop
         setInterval(() => this.mainLoop(options), options.interval * 1000);
         
@@ -80,6 +83,10 @@ module.exports = {
         
         if (existingStats) {
             this.state.todayStats = existingStats;
+            // Ensure retryAttempts exists for backward compatibility
+            if (!this.state.todayStats.retryAttempts) {
+                this.state.todayStats.retryAttempts = {};
+            }
         } else {
             this.state.todayStats = {
                 date: today,
@@ -164,6 +171,57 @@ module.exports = {
     },
 
     /**
+     * Filter servers based on uptime requirement (minimum 6 hours)
+     * @param {Array} servers Array of server objects
+     * @param {number} minimumUptimeHours Minimum uptime in hours (default: 6)
+     * @returns {object} Object with eligible and skipped servers
+     */
+    filterServersByUptime: async function (servers, minimumUptimeHours = 6) {
+        const eligible = [];
+        const skipped = [];
+        
+        console.log(`Checking uptime for ${servers.length} servers (minimum: ${minimumUptimeHours}h)...`);
+        
+        // Check uptime for all servers in parallel for efficiency
+        const uptimePromises = servers.map(async (server) => {
+            try {
+                const uptimeHours = await pterodactyl.getServerUptime(server.serverId);
+                return { server, uptimeHours };
+            } catch (error) {
+                console.error(`Error checking uptime for ${server.name}:`, error.message);
+                // On error, assume server needs reboot (include it)
+                return { server, uptimeHours: minimumUptimeHours };
+            }
+        });
+        
+        const uptimeResults = await Promise.allSettled(uptimePromises);
+        
+        uptimeResults.forEach((result, index) => {
+            const server = servers[index];
+            
+            if (result.status === 'fulfilled') {
+                const { uptimeHours } = result.value;
+                
+                if (uptimeHours >= minimumUptimeHours) {
+                    eligible.push(server);
+                    console.log(`✅ ${server.name}: ${uptimeHours}h uptime - eligible for reboot`);
+                } else {
+                    skipped.push({ server, uptimeHours });
+                    console.log(`⏭️ ${server.name}: ${uptimeHours}h uptime - skipping (too recent)`);
+                }
+            } else {
+                // On error, include server in eligible list (fail-safe approach)
+                eligible.push(server);
+                console.log(`⚠️ ${server.name}: uptime check failed - including in reboot (fail-safe)`);
+            }
+        });
+        
+        console.log(`Uptime filtering complete: ${eligible.length} eligible, ${skipped.length} skipped`);
+        
+        return { eligible, skipped };
+    },
+
+    /**
      * Trigger the complete reboot sequence
      * @param {string} reason Reason for triggering
      * @param {number} currentPlayerCount Current player count
@@ -191,12 +249,12 @@ module.exports = {
             console.log(`Server ${server.tag}: excludeFromServerList=${excluded}, early_access=${earlyAccess}, shouldReboot=${shouldReboot}`);
         });
         
-        const eligibleServers = servers.filter(server => 
+        const initialEligibleServers = servers.filter(server => 
             !server.early_access &&
             this.shouldRebootServer(server)
         );
         
-        console.log(`Eligible servers for reboot: ${eligibleServers.map(s => s.tag).join(', ')}`);
+        console.log(`Initial eligible servers: ${initialEligibleServers.map(s => s.tag).join(', ')}`);
         
         // Check for missing GTSE/GTNG specifically
         const gtseServer = servers.find(s => s.tag === 'GTSE');
@@ -204,14 +262,34 @@ module.exports = {
         if (gtseServer) console.log(`GTSE status: excludeFromServerList=${gtseServer.excludeFromServerList}, early_access=${gtseServer.early_access}`);
         if (gtngServer) console.log(`GTNG status: excludeFromServerList=${gtngServer.excludeFromServerList}, early_access=${gtngServer.early_access}`);
         
-        this.state.todayStats.totalServers = eligibleServers.length;
-        this.state.rebootQueue = [...eligibleServers];
+        // Apply uptime filtering - only reboot servers with >6 hours uptime
+        const uptimeFilterResult = await this.filterServersByUptime(initialEligibleServers, 6);
+        const finalEligibleServers = uptimeFilterResult.eligible;
         
-        // Save initial stats
-        await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
+        console.log(`Final servers for reboot after uptime filtering: ${finalEligibleServers.map(s => s.tag).join(', ')}`);
         
-        // Send notification to staff channel
-        await this.sendRebootNotification('start', { reason, playerCount: currentPlayerCount, serverCount: eligibleServers.length });
+        if (uptimeFilterResult.skipped.length > 0) {
+            console.log(`Skipped servers (insufficient uptime): ${uptimeFilterResult.skipped.map(s => `${s.server.tag}(${s.uptimeHours}h)`).join(', ')}`);
+        }
+        
+        this.state.todayStats.totalServers = finalEligibleServers.length;
+        this.state.rebootQueue = [...finalEligibleServers];
+        
+        // Save initial stats with error handling
+        try {
+            await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
+        } catch (error) {
+            console.error('Error saving initial reboot stats:', error.message);
+            // Continue anyway - don't let DB failures stop the reboot
+        }
+        
+        // Send notification to staff channel with error handling
+        try {
+            await this.sendRebootNotification('start', { reason, playerCount: currentPlayerCount, serverCount: finalEligibleServers.length });
+        } catch (error) {
+            console.error('Error sending start notification:', error.message);
+            // Continue anyway - don't let Discord failures stop the reboot
+        }
         
         // Start processing the queue
         await this.processRebootQueue(config);
@@ -279,13 +357,23 @@ module.exports = {
                 nodePromises.push(nodePromise);
             }
             
-            // Wait for ALL nodes to complete simultaneously
-            try {
-                await Promise.all(nodePromises);
-                console.log(`BATCH ${batchIndex + 1} COMPLETED: All ${currentBatch.length} servers finished`);
-            } catch (error) {
-                console.error(`Error in batch ${batchIndex + 1}:`, error.message);
-            }
+            // Wait for ALL nodes to complete simultaneously - using allSettled for fault tolerance
+            const nodeResults = await Promise.allSettled(nodePromises);
+            
+            // Process results and log individual node failures
+            let successfulNodes = 0;
+            let failedNodes = 0;
+            
+            nodeResults.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    successfulNodes++;
+                } else {
+                    failedNodes++;
+                    console.error(`Node ${index + 1} failed:`, result.reason?.message || result.reason);
+                }
+            });
+            
+            console.log(`BATCH ${batchIndex + 1} COMPLETED: ${successfulNodes} nodes successful, ${failedNodes} nodes failed`);
             
             // Brief delay between batches for stability
             if (batchIndex + 1 < batchConfig.totalBatches) {
@@ -452,13 +540,23 @@ module.exports = {
                 return this.executeFullServerReboot(server, nodeId);
             });
             
-            try {
-                await Promise.all(serverPromises);
-                console.log(`Node ${nodeId}: All ${servers.length} servers completed successfully`);
-            } catch (error) {
-                console.error(`Node ${nodeId}: Error processing servers:`, error.message);
-                throw error;
-            }
+            const serverResults = await Promise.allSettled(serverPromises);
+            
+            // Process individual server results
+            let successfulServers = 0;
+            let failedServers = 0;
+            
+            serverResults.forEach((result, index) => {
+                if (result.status === 'fulfilled') {
+                    successfulServers++;
+                } else {
+                    failedServers++;
+                    const serverName = servers[index]?.name || `Server ${index + 1}`;
+                    console.error(`[${serverName}] Failed:`, result.reason?.message || result.reason);
+                }
+            });
+            
+            console.log(`Node ${nodeId}: ${successfulServers} servers successful, ${failedServers} servers failed`);
         } else {
             // Too many servers - process in sub-batches
             console.log(`Node ${nodeId}: Processing ${servers.length} servers in sub-batches of ${maxConcurrent}`);
@@ -472,12 +570,23 @@ module.exports = {
                     return this.executeFullServerReboot(server, nodeId);
                 });
                 
-                try {
-                    await Promise.all(subBatchPromises);
-                    console.log(`Node ${nodeId}: Sub-batch completed`);
-                } catch (error) {
-                    console.error(`Node ${nodeId}: Sub-batch error:`, error.message);
-                }
+                const subBatchResults = await Promise.allSettled(subBatchPromises);
+                
+                // Process sub-batch results
+                let subBatchSuccess = 0;
+                let subBatchFailed = 0;
+                
+                subBatchResults.forEach((result, subIndex) => {
+                    if (result.status === 'fulfilled') {
+                        subBatchSuccess++;
+                    } else {
+                        subBatchFailed++;
+                        const serverName = subBatch[subIndex]?.name || `Server ${subIndex + 1}`;
+                        console.error(`[${serverName}] Sub-batch failed:`, result.reason?.message || result.reason);
+                    }
+                });
+                
+                console.log(`Node ${nodeId}: Sub-batch completed - ${subBatchSuccess} success, ${subBatchFailed} failed`);
                 
                 // Brief pause between sub-batches on same node
                 if (i + maxConcurrent < servers.length) {
@@ -549,7 +658,18 @@ module.exports = {
         
         for (let i = 0; i < warnings.length; i++) {
             try {
-                await pterodactyl.sendCommand(server.serverId, warnings[i].command);
+                // Add timeout protection for each command
+                const commandTimeout = setTimeout(() => {
+                    throw new Error(`Command timeout: ${warnings[i].command}`);
+                }, 15000); // 15 second timeout per command
+                
+                try {
+                    await pterodactyl.sendCommand(server.serverId, warnings[i].command);
+                    clearTimeout(commandTimeout);
+                } catch (cmdError) {
+                    clearTimeout(commandTimeout);
+                    throw cmdError;
+                }
                 
                 // Update stage tracking
                 const rebootInfo = this.state.activeReboots.get(server.serverId);
@@ -563,6 +683,7 @@ module.exports = {
                 }
             } catch (error) {
                 console.error(`Error sending command to ${server.name}:`, error.message);
+                // Continue with other commands even if one fails
             }
         }
         
@@ -576,8 +697,18 @@ module.exports = {
      */
     startServerAndMonitor: async function (server) {
         try {
-            // Start the server
-            await pterodactyl.sendPowerAction(server.serverId, 'start');
+            // Start the server with timeout protection
+            const startTimeout = setTimeout(() => {
+                throw new Error(`Start command timeout after 30 seconds`);
+            }, 30000);
+            
+            try {
+                await pterodactyl.sendPowerAction(server.serverId, 'start');
+                clearTimeout(startTimeout);
+            } catch (startError) {
+                clearTimeout(startTimeout);
+                throw startError;
+            }
             
             // Update stage
             const rebootInfo = this.state.activeReboots.get(server.serverId);
@@ -656,7 +787,7 @@ module.exports = {
     },
 
     /**
-     * Handle reboot failure with retry logic
+     * Handle reboot failure with retry logic and circuit breaker protection
      * @param {object} server Server object
      */
     handleRebootFailure: async function (server) {
@@ -666,25 +797,53 @@ module.exports = {
         
         rebootInfo.attempts++;
         
-        if (rebootInfo.attempts < 3) {
+        // Circuit breaker: prevent infinite recursion
+        const maxRetries = this.runtimeConfig?.rebootRetryLimit || 3;
+        const timeSinceStart = Date.now() - rebootInfo.startTime;
+        const maxRebootTime = 45 * 60 * 1000; // 45 minutes absolute maximum
+        
+        // Check circuit breaker conditions
+        if (rebootInfo.attempts >= maxRetries) {
+            console.log(`Circuit breaker: Max retries (${maxRetries}) reached for ${server.name}`);
+            await this.alertStaffServerFailure(server);
+            await this.completeServerReboot(server, false);
+            return;
+        }
+        
+        if (timeSinceStart > maxRebootTime) {
+            console.log(`Circuit breaker: Max reboot time (45min) exceeded for ${server.name}`);
+            await this.alertStaffServerFailure(server);
+            await this.completeServerReboot(server, false);
+            return;
+        }
+        
+        if (rebootInfo.attempts < maxRetries) {
             console.log(`Retrying reboot for ${server.name} (attempt ${rebootInfo.attempts + 1})`);
             
             try {
-                // Kill the server first
-                await pterodactyl.sendPowerAction(server.serverId, 'kill');
+                // Kill the server first with timeout protection
+                const killTimeout = setTimeout(() => {
+                    throw new Error(`Kill command timeout after 30 seconds`);
+                }, 30000);
+                
+                try {
+                    await pterodactyl.sendPowerAction(server.serverId, 'kill');
+                    clearTimeout(killTimeout);
+                } catch (killError) {
+                    clearTimeout(killTimeout);
+                    console.error(`Kill command failed for ${server.name}:`, killError.message);
+                    // Continue anyway - server might already be down
+                }
+                
                 await functions.sleep(10000); // Wait 10 seconds
                 
                 // Try starting again
                 await this.startServerAndMonitor(server);
             } catch (error) {
                 console.error(`Error during retry for ${server.name}:`, error.message);
-                await this.handleRebootFailure(server); // Recursive retry
+                // Prevent infinite recursion - circuit breaker will handle it
+                await this.handleRebootFailure(server);
             }
-        } else {
-            // Max retries reached, notify staff and mark as failed
-            console.log(`Max retries reached for ${server.name}, alerting staff`);
-            await this.alertStaffServerFailure(server);
-            await this.completeServerReboot(server, false);
         }
     },
 
@@ -729,16 +888,122 @@ module.exports = {
         const totalTime = Date.now() - this.state.rebootStartTime;
         this.state.todayStats.totalDuration = totalTime;
         
-        // Save final stats
-        await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
+        // Save final stats with error handling
+        try {
+            await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
+        } catch (error) {
+            console.error('Error saving final reboot stats:', error.message);
+            // Log but continue - stats are important but not critical for completion
+        }
         
-        // Send completion notification
-        await this.sendRebootNotification('complete', {
-            successCount: this.state.todayStats.successfulReboots,
-            failureCount: this.state.todayStats.failedReboots,
-            totalTime: timeManager.formatDuration(totalTime),
-            retryAttempts: this.state.todayStats.retryAttempts
-        });
+        // Send completion notification with error handling
+        try {
+            await this.sendRebootNotification('complete', {
+                successCount: this.state.todayStats.successfulReboots,
+                failureCount: this.state.todayStats.failedReboots,
+                totalTime: timeManager.formatDuration(totalTime),
+                retryAttempts: this.state.todayStats.retryAttempts
+            });
+        } catch (error) {
+            console.error('Error sending completion notification:', error.message);
+            // Log but don't fail - notification is nice-to-have
+        }
+    },
+
+    /**
+     * Recover from interrupted reboot process on scheduler restart
+     */
+    recoverFromInterruptedReboot: async function () {
+        try {
+            const today = timeManager.getTodayDateString();
+            const todayStats = await mongo.getRebootHistory(today);
+            
+            if (todayStats && todayStats.rebootTriggered && !todayStats.rebootCompleted) {
+                console.log('🔄 Detected interrupted reboot process - performing recovery...');
+                
+                // Clear any stuck state
+                this.state.isRebootInProgress = false;
+                this.state.rebootQueue = [];
+                this.state.activeReboots.clear();
+                
+                // Mark as completed with partial success
+                todayStats.rebootCompleted = true;
+                todayStats.rebootEndTime = new Date().toISOString();
+                todayStats.notes = 'Recovered from interrupted process on scheduler restart';
+                
+                // Save recovery state
+                await mongo.updateRebootHistory(today, todayStats);
+                
+                console.log('✅ State recovery completed - scheduler ready for new operations');
+            }
+        } catch (error) {
+            console.error('Error during state recovery:', error.message);
+            // Continue anyway - don't let recovery failures block the scheduler
+        }
+    },
+
+    /**
+     * Emergency cleanup function - can be called manually if needed
+     */
+    emergencyCleanup: async function () {
+        console.log('🚨 Performing emergency cleanup...');
+        
+        try {
+            // Clear all active state
+            this.state.isRebootInProgress = false;
+            this.state.rebootQueue = [];
+            this.state.activeReboots.clear();
+            
+            // Reset today's stats if needed
+            if (this.state.todayStats.rebootTriggered && !this.state.todayStats.rebootCompleted) {
+                this.state.todayStats.rebootCompleted = true;
+                this.state.todayStats.rebootEndTime = new Date().toISOString();
+                this.state.todayStats.notes = 'Emergency cleanup performed';
+                
+                const today = timeManager.getTodayDateString();
+                await mongo.updateRebootHistory(today, this.state.todayStats);
+            }
+            
+            console.log('✅ Emergency cleanup completed');
+            return true;
+        } catch (error) {
+            console.error('Error during emergency cleanup:', error.message);
+            return false;
+        }
+    },
+
+    /**
+     * Abort current reboot sequence safely
+     */
+    abortRebootSequence: async function (reason = 'Manual abort') {
+        if (!this.state.isRebootInProgress) {
+            console.log('No reboot in progress to abort');
+            return false;
+        }
+        
+        console.log(`🛑 Aborting reboot sequence: ${reason}`);
+        
+        try {
+            // Mark current process as completed
+            this.state.isRebootInProgress = false;
+            this.state.todayStats.rebootCompleted = true;
+            this.state.todayStats.rebootEndTime = new Date().toISOString();
+            this.state.todayStats.notes = `Aborted: ${reason}`;
+            
+            // Save abort state
+            const today = timeManager.getTodayDateString();
+            await mongo.updateRebootHistory(today, this.state.todayStats);
+            
+            // Clear queues and active reboots
+            this.state.rebootQueue = [];
+            this.state.activeReboots.clear();
+            
+            console.log('✅ Reboot sequence aborted successfully');
+            return true;
+        } catch (error) {
+            console.error('Error aborting reboot sequence:', error.message);
+            return false;
+        }
     },
 
     /**

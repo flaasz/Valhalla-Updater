@@ -46,6 +46,40 @@ module.exports = {
     },
 
     /**
+     * Gets server uptime in hours
+     * @param {string} serverID Id of the server on Pterodactyl.
+     * @returns {number} Server uptime in hours, or 0 if server is not running
+     */
+    getServerUptime: async function (serverID) {
+        try {
+            const status = await this.getStatus(serverID);
+            
+            if (!status || status.attributes.current_state !== 'running') {
+                return 0; // Server not running = 0 uptime
+            }
+            
+            // Check if uptime is available in the response
+            const uptimeSeconds = status.attributes.resources?.uptime_in_seconds;
+            if (uptimeSeconds !== undefined) {
+                return Math.floor(uptimeSeconds / 3600); // Convert to hours
+            }
+            
+            // Fallback: if no uptime in response, check memory usage as indicator
+            // If server is using memory, it's likely been running for a while
+            const memoryMB = status.attributes.resources?.memory_bytes ? 
+                status.attributes.resources.memory_bytes / (1024 * 1024) : 0;
+            
+            // If using significant memory (>100MB), assume it's been running for a while
+            // This is a rough estimate when uptime isn't directly available
+            return memoryMB > 100 ? 24 : 0; // Conservative estimate
+            
+        } catch (error) {
+            console.error(`Error getting uptime for server ${serverID}:`, error.message);
+            return 0; // Return 0 on error to be safe
+        }
+    },
+
+    /**
      * Gets the one-time download link of a file.
      * @param {string} serverID Id of the server on Pterodactyl.
      * @param {string} path Path to the file to download on Pterodactyl.

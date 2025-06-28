@@ -36,6 +36,14 @@ module.exports = {
                         .setRequired(false)
                         .setMinValue(1)
                         .setMaxValue(30)))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('abort')
+                .setDescription('Abort current reboot sequence (EMERGENCY)'))
+        .addSubcommand(subcommand =>
+            subcommand
+                .setName('cleanup')
+                .setDescription('Emergency cleanup of stuck reboot state (EMERGENCY)'))
         .setDMPermission(false),
 
     async execute(interaction) {
@@ -59,6 +67,12 @@ module.exports = {
                     break;
                 case 'history':
                     await this.showRebootHistory(interaction);
+                    break;
+                case 'abort':
+                    await this.abortReboot(interaction);
+                    break;
+                case 'cleanup':
+                    await this.emergencyCleanup(interaction);
                     break;
                 default:
                     await interaction.editReply('Unknown subcommand!');
@@ -258,5 +272,55 @@ module.exports = {
         }
         
         await interaction.editReply({ embeds: [embed] });
+    },
+
+    async abortReboot(interaction) {
+        try {
+            const rebootScheduler = require('../../schedulers/rebootScheduler');
+            const success = await rebootScheduler.abortRebootSequence(
+                `Manual abort by ${interaction.user.username} (${interaction.user.id})`
+            );
+            
+            const embed = new EmbedBuilder()
+                .setColor(success ? 0xffa500 : 0xff0000)
+                .setTitle(success ? '🛑 Reboot Sequence Aborted' : '❌ Abort Failed')
+                .setDescription(success ? 
+                    'The current reboot sequence has been safely aborted.' : 
+                    'Failed to abort reboot sequence or no reboot was in progress.')
+                .addFields(
+                    { name: 'Requested By', value: interaction.user.username, inline: true },
+                    { name: 'Time', value: new Date().toISOString(), inline: true }
+                )
+                .setTimestamp();
+            
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('Error aborting reboot:', error.message);
+            await interaction.editReply('❌ Failed to abort reboot sequence.');
+        }
+    },
+
+    async emergencyCleanup(interaction) {
+        try {
+            const rebootScheduler = require('../../schedulers/rebootScheduler');
+            const success = await rebootScheduler.emergencyCleanup();
+            
+            const embed = new EmbedBuilder()
+                .setColor(success ? 0x00ff00 : 0xff0000)
+                .setTitle(success ? '🚨 Emergency Cleanup Completed' : '❌ Cleanup Failed')
+                .setDescription(success ? 
+                    'Emergency cleanup has been performed. All stuck reboot states have been cleared.' : 
+                    'Emergency cleanup failed. Manual intervention may be required.')
+                .addFields(
+                    { name: 'Requested By', value: interaction.user.username, inline: true },
+                    { name: 'Time', value: new Date().toISOString(), inline: true }
+                )
+                .setTimestamp();
+            
+            await interaction.editReply({ embeds: [embed] });
+        } catch (error) {
+            console.error('Error during emergency cleanup:', error.message);
+            await interaction.editReply('❌ Emergency cleanup failed.');
+        }
     }
 };
