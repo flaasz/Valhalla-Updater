@@ -423,4 +423,241 @@ module.exports = {
         return jobs;
     },
 
+    // Crash history functions
+    /**
+     * Stores a server crash event to the crash history collection.
+     * @param {string} serverId Server ID from Pterodactyl.
+     * @param {object} crashEvent Crash event data.
+     * @returns {object} Inserted document with _id.
+     */
+    storeCrashEvent: async function (serverId, crashEvent) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('server_crash_history')
+            .insertOne({
+                serverId: serverId,
+                timestamp: new Date(crashEvent.timestamp),
+                type: crashEvent.type,
+                serverName: crashEvent.serverName,
+                serverTag: crashEvent.serverTag,
+                uptime: crashEvent.uptime,
+                crashCount: crashEvent.crashCount,
+                timeWindow: crashEvent.timeWindow,
+                stuckDuration: crashEvent.stuckDuration,
+                previousState: crashEvent.previousState,
+                createdAt: new Date()
+            });
+
+        return result;
+    },
+
+    /**
+     * Gets crash history for a specific server.
+     * @param {string} serverId Server ID from Pterodactyl.
+     * @param {number} limitHours Only get crashes from the last X hours (default: 24).
+     * @returns {Array} Array of crash events.
+     */
+    getServerCrashHistory: async function (serverId, limitHours = 24) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const cutoff = new Date(Date.now() - (limitHours * 60 * 60 * 1000));
+        
+        const crashes = await mongoClient
+            .db(mongoDBName)
+            .collection('server_crash_history')
+            .find({
+                serverId: serverId,
+                timestamp: { $gte: cutoff }
+            })
+            .sort({ timestamp: -1 })
+            .toArray();
+
+        return crashes;
+    },
+
+    /**
+     * Gets crash summary statistics for all servers.
+     * @param {number} limitHours Only count crashes from the last X hours (default: 24).
+     * @returns {object} Crash statistics summary.
+     */
+    getCrashStatistics: async function (limitHours = 24) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const cutoff = new Date(Date.now() - (limitHours * 60 * 60 * 1000));
+        
+        // Get total crash count
+        const totalCrashes = await mongoClient
+            .db(mongoDBName)
+            .collection('server_crash_history')
+            .countDocuments({
+                timestamp: { $gte: cutoff }
+            });
+
+        // Get crashes by type
+        const crashesByType = await mongoClient
+            .db(mongoDBName)
+            .collection('server_crash_history')
+            .aggregate([
+                { $match: { timestamp: { $gte: cutoff } } },
+                { $group: { _id: '$type', count: { $sum: 1 } } },
+                { $sort: { count: -1 } }
+            ]).toArray();
+
+        // Get servers with most crashes
+        const serverCrashCounts = await mongoClient
+            .db(mongoDBName)
+            .collection('server_crash_history')
+            .aggregate([
+                { $match: { timestamp: { $gte: cutoff } } },
+                { $group: { 
+                    _id: { serverId: '$serverId', serverName: '$serverName', serverTag: '$serverTag' }, 
+                    count: { $sum: 1 } 
+                } },
+                { $sort: { count: -1 } },
+                { $limit: 10 }
+            ]).toArray();
+
+        return {
+            totalCrashes,
+            crashesByType,
+            topCrashingServers: serverCrashCounts,
+            timeWindow: limitHours
+        };
+    },
+
+    /**
+     * Gets recent crash events across all servers for monitoring.
+     * @param {number} limit Maximum number of recent crashes to return (default: 50).
+     * @returns {Array} Array of recent crash events.
+     */
+    getRecentCrashes: async function (limit = 50) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const crashes = await mongoClient
+            .db(mongoDBName)
+            .collection('server_crash_history')
+            .find({})
+            .sort({ timestamp: -1 })
+            .limit(limit)
+            .toArray();
+
+        return crashes;
+    },
+
+    /**
+     * Clean up old crash history data.
+     * @param {number} retentionDays Number of days to keep crash history (default: 30).
+     * @returns {object} Result of deletion operation.
+     */
+    cleanupOldCrashHistory: async function (retentionDays = 30) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const cutoff = new Date(Date.now() - (retentionDays * 24 * 60 * 60 * 1000));
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('server_crash_history')
+            .deleteMany({
+                timestamp: { $lt: cutoff }
+            });
+
+        return result;
+    },
+
+    /**
+     * Stores server state transition for analysis.
+     * @param {string} serverId Server ID from Pterodactyl.
+     * @param {object} stateTransition State transition data.
+     * @returns {object} Inserted document with _id.
+     */
+    storeStateTransition: async function (serverId, stateTransition) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('server_state_history')
+            .insertOne({
+                serverId: serverId,
+                timestamp: new Date(stateTransition.timestamp),
+                fromState: stateTransition.fromState,
+                toState: stateTransition.toState,
+                serverName: stateTransition.serverName,
+                serverTag: stateTransition.serverTag,
+                uptime: stateTransition.uptime,
+                createdAt: new Date()
+            });
+
+        return result;
+    },
+
+    /**
+     * Gets server state transition history.
+     * @param {string} serverId Server ID from Pterodactyl.
+     * @param {number} limitHours Only get transitions from the last X hours (default: 24).
+     * @returns {Array} Array of state transitions.
+     */
+    getServerStateHistory: async function (serverId, limitHours = 24) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const cutoff = new Date(Date.now() - (limitHours * 60 * 60 * 1000));
+        
+        const transitions = await mongoClient
+            .db(mongoDBName)
+            .collection('server_state_history')
+            .find({
+                serverId: serverId,
+                timestamp: { $gte: cutoff }
+            })
+            .sort({ timestamp: -1 })
+            .toArray();
+
+        return transitions;
+    },
+
+    /**
+     * Clean up old state transition history.
+     * @param {number} retentionDays Number of days to keep state history (default: 7).
+     * @returns {object} Result of deletion operation.
+     */
+    cleanupOldStateHistory: async function (retentionDays = 7) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const cutoff = new Date(Date.now() - (retentionDays * 24 * 60 * 60 * 1000));
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('server_state_history')
+            .deleteMany({
+                timestamp: { $lt: cutoff }
+            });
+
+        return result;
+    },
+
 };

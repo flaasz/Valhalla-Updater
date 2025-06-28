@@ -10,7 +10,6 @@
  * Copyright 2024 flaasz
  */
 
-// Enhanced crash reporter with bulletproof multi-layer fallback
 const enhancedCrashReporter = require('./enhancedCrashReporter');
 
 // Initialize session logger for full session tracking
