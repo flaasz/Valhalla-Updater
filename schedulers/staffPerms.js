@@ -13,6 +13,7 @@
 const functions = require("../modules/functions");
 const mongo = require("../modules/mongo");
 const pterodactyl = require("../modules/pterodactyl");
+const sessionLogger = require("../modules/sessionLogger");
 
 module.exports = {
     name: "staffPerms",
@@ -47,7 +48,7 @@ module.exports = {
 
     givePerms: async function (options) {
 
-        console.log("Checking staff permissions...");
+        sessionLogger.info('StaffPerms', "Checking staff permissions...");
         const servers = await mongo.getServers();
 
         for (let server of servers) {
@@ -63,7 +64,7 @@ module.exports = {
                     if (options.staffPermissions.every(permission => user.attributes.permissions.includes(permission))) {
                         continue;
                     } else {
-                        console.log(`User ${staffMail} has missing permissions for server ${server.name}! Updating...`);
+                        sessionLogger.info('StaffPerms', `User ${staffMail} has missing permissions for server ${server.name}! Updating...`);
                         await pterodactyl.updateSubUser(server.serverId, user.attributes.uuid, {
                             "permissions": options.staffPermissions
                         });
@@ -73,7 +74,7 @@ module.exports = {
                 }
 
                 await functions.sleep(300);
-                console.log(`User ${staffMail} does not have permissions for server ${server.name}! Adding...`);
+                sessionLogger.info('StaffPerms', `User ${staffMail} does not have permissions for server ${server.name}! Adding...`);
 
                 const userBody = {
                     "email": staffMail,

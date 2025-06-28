@@ -1,6 +1,7 @@
 const mongo = require("../modules/mongo");
 const { EmbedBuilder } = require("discord.js");
 const crypto = require('crypto');
+const sessionLogger = require("../modules/sessionLogger");
 
 module.exports = {
     name: 'serverStatusMonitor',
@@ -14,7 +15,7 @@ module.exports = {
      * @param {object} options Object containing options for the scheduler.
      */
     start: async function (options) {
-        console.log(`Server Status Monitor started - checking every ${options.interval} seconds`);
+        sessionLogger.info('ServerStatusMonitor', `Server Status Monitor started - checking every ${options.interval} seconds`);
         
         // Start the main update loop - convert seconds to milliseconds
         setInterval(this.checkAndUpdateEmbeds, options.interval * 1000);

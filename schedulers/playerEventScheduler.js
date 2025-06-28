@@ -2,6 +2,7 @@ const mongo = require("../modules/mongo");
 const velocityMetrics = require("../modules/velocityMetrics");
 const pterodactyl = require("../modules/pterodactyl");
 const functions = require("../modules/functions");
+const sessionLogger = require("../modules/sessionLogger");
 
 module.exports = {
     name: 'playerEventScheduler',
@@ -15,7 +16,7 @@ module.exports = {
      * @param {object} options Configuration options
      */
     start: async function (options) {
-        console.log(`Player Event Scheduler started - checking every ${options.interval} seconds`);
+        sessionLogger.info('PlayerEventScheduler', `Player Event Scheduler started - checking every ${options.interval} seconds`);
         
         // Start the main monitoring loop
         setInterval(() => this.mainLoop(options), options.interval * 1000);
@@ -105,7 +106,7 @@ module.exports = {
             
             // Execute each command
             for (const command of trigger.commands) {
-                console.log(`Player trigger: '${command}' executed for ${trigger.playerId} on ${server.tag}`);
+                sessionLogger.info('PlayerEventScheduler', `Player trigger: '${command}' executed for ${trigger.playerId} on ${server.tag}`);
                 await pterodactyl.sendCommand(server.serverId, command);
                 await functions.sleep(1000); // 1 second delay between commands
             }

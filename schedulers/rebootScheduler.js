@@ -4,6 +4,7 @@ const pterodactyl = require("../modules/pterodactyl");
 const timeManager = require("../modules/timeManager");
 const functions = require("../modules/functions");
 const { EmbedBuilder } = require("discord.js");
+const sessionLogger = require("../modules/sessionLogger");
 
 module.exports = {
     name: 'rebootScheduler',
@@ -37,16 +38,28 @@ module.exports = {
      * @param {object} options Configuration options
      */
     start: async function (options) {
-        console.log(`Reboot Scheduler started - checking every ${options.interval} seconds`);
+        sessionLogger.info('RebootScheduler', `Reboot Scheduler started - checking every ${options.interval} seconds`);
+        sessionLogger.info('RebootScheduler', `Max concurrent reboots per node: ${options.maxConcurrentReboots}`);
+        sessionLogger.info('RebootScheduler', `Player threshold for reboot: ${options.playerThreshold}`);
         
         // Store runtime config for use throughout the module
         this.runtimeConfig = options;
         
         // Initialize today's stats
-        await this.initializeTodayStats();
+        try {
+            await this.initializeTodayStats();
+            sessionLogger.info('RebootScheduler', 'Today stats initialized successfully');
+        } catch (error) {
+            sessionLogger.error('RebootScheduler', 'Failed to initialize today stats', error.message);
+        }
         
         // Perform state recovery check
-        await this.recoverFromInterruptedReboot();
+        try {
+            await this.recoverFromInterruptedReboot();
+            sessionLogger.info('RebootScheduler', 'State recovery check completed');
+        } catch (error) {
+            sessionLogger.error('RebootScheduler', 'Failed state recovery check', error.message);
+        }
         
         // Start the main monitoring loop
         setInterval(() => this.mainLoop(options), options.interval * 1000);

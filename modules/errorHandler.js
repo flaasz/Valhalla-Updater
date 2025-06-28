@@ -1,5 +1,5 @@
 /*
- * File: error.js
+ * File: errorHandler.js
  * Project: valhalla-updater
  * File Created: Thursday, 30th May 2024 11:29:57 pm
  * Author: flaasz
@@ -10,62 +10,57 @@
  * Copyright 2024 flaasz
  */
 
-const fs = require('fs');
-const path = require('path');
-const exitOnError = require('../config/config.json').base.exitOnError;
+// Enhanced crash reporter with bulletproof multi-layer fallback
+const enhancedCrashReporter = require('./enhancedCrashReporter');
 
-function logError(error) {
-    const timestamp = new Date().toISOString();
-    const errorMessage = `
-        Timestamp: ${timestamp}
-        Error Name: ${error.name}
-        Error Message: ${error.message}
-        Error Stack: ${error.stack}
+// Initialize session logger for full session tracking
+const sessionLogger = require('./sessionLogger');
 
-        Process Info:
-        Node Version: ${process.version}
-        Platform: ${process.platform}
-        PID: ${process.pid}
+let exitOnError = true;
 
-        Memory Usage:
-        RSS: ${Math.round(process.memoryUsage().rss / 1024 / 1024)} MB
-        Heap Total: ${Math.round(process.memoryUsage().heapTotal / 1024 / 1024)} MB
-        Heap Used: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)} MB
-        External: ${Math.round(process.memoryUsage().external / 1024 / 1024)} MB
-    `.trim();
+// Try to load exitOnError config, but don't crash if config is broken
+try {
+    exitOnError = require('../config/config.json').base.exitOnError;
+} catch (err) {
+    console.warn('Could not load exitOnError config, defaulting to true');
+}
 
-    const logsDir = 'crash-logs';
-    if (!fs.existsSync(logsDir)) {
-        fs.mkdirSync(logsDir);
+// Enhanced error handler that preserves original functionality but with better reporting
+function handleError(error, type = 'Unknown') {
+    try {
+        sessionLogger.fatal('ErrorHandler', `${type}: ${error.message}`);
+    } catch (logErr) {
+        // Session logger failed, but crash reporter will still work
     }
 
-    const logFilePath = path.join(logsDir, `crash_${timestamp.split(".")[0].replace(/:/g, "-")}.log`);
-    fs.writeFileSync(logFilePath, errorMessage);
+    // Use enhanced crash reporter
+    enhancedCrashReporter.handleCrash(error);
 
-    const files = fs.readdirSync(logsDir)
-        .map(file => ({
-            file,
-            time: fs.statSync(path.join(logsDir, file)).mtime.getTime()
-        }))
-        .sort((a, b) => a.time - b.time);
-
-    if (files.length > 10) {
-        fs.unlinkSync(path.join(logsDir, files[0].file));
-    }
-
+    // Preserve original exitOnError behavior
     if (!exitOnError) {
-        console.error(`Error occurred! Check ${logFilePath} for more info.`);
+        console.error(`Error occurred! Check crash-logs directory for detailed report.`);
         return;
     }
+    
     process.exit(1);
 }
 
+// Remove default handlers from enhancedCrashReporter to avoid double handling
+process.removeAllListeners('uncaughtException');
+process.removeAllListeners('unhandledRejection');
+
+// Set up our handlers with preserved behavior
 process.on('uncaughtException', (error) => {
-    console.error('Uncaught Exception:', error);
-    logError(error);
+    console.error('\n!!! UNCAUGHT EXCEPTION !!!');
+    handleError(error, 'Uncaught Exception');
 });
 
 process.on('unhandledRejection', (reason, promise) => {
-    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-    logError(reason instanceof Error ? reason : new Error(reason));
+    console.error('\n!!! UNHANDLED PROMISE REJECTION !!!');
+    const error = reason instanceof Error ? reason : new Error(String(reason));
+    error.promise = promise;
+    handleError(error, 'Unhandled Rejection');
 });
+
+// Start session logging
+sessionLogger.logSessionStart();

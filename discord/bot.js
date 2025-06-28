@@ -16,6 +16,7 @@ const {
 } = require('discord.js');
 const commands = require('./commands');
 const events = require('./events');
+const sessionLogger = require('../modules/sessionLogger');
 
 require('dotenv').config();
 
@@ -27,12 +28,22 @@ const client = new Client({
 
 module.exports = {
     launchBot: async function () {
-        
-        console.log("Launching bot...");
-        commands.loadCommandFiles(client);
-        events.loadEventFiles(client);
+        try {
+            sessionLogger.info('DiscordBot', 'Initializing Discord bot...');
+            
+            commands.loadCommandFiles(client);
+            sessionLogger.info('DiscordBot', 'Command files loaded');
+            
+            events.loadEventFiles(client);
+            sessionLogger.info('DiscordBot', 'Event files loaded');
 
-        await client.login(token);
+            sessionLogger.info('DiscordBot', 'Connecting to Discord...');
+            await client.login(token);
+            sessionLogger.info('DiscordBot', 'Successfully connected to Discord');
+        } catch (error) {
+            sessionLogger.error('DiscordBot', 'Failed to launch bot', error.message);
+            throw error;
+        }
     },
 
     getClient: function () {
