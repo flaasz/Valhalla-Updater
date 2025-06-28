@@ -12,6 +12,7 @@
 
 const axios = require('axios');
 const progress = require('progress');
+const sessionLogger = require('./sessionLogger');
 require('dotenv').config();
 
 
@@ -54,27 +55,44 @@ module.exports = {
         try {
             const status = await this.getStatus(serverID);
             
+            // DEBUG: Log the full response to see what we actually get
+            sessionLogger.info('Pterodactyl', `Server ${serverID} full response:`, JSON.stringify(status, null, 2));
+            
             if (!status || status.attributes.current_state !== 'running') {
+                sessionLogger.info('Pterodactyl', `Server ${serverID}: Not running (state: ${status?.attributes?.current_state})`);
                 return 0; // Server not running = 0 uptime
             }
             
-            // Check if uptime is available in the response
-            const uptimeSeconds = status.attributes.resources?.uptime_in_seconds;
-            if (uptimeSeconds !== undefined) {
-                return Math.floor(uptimeSeconds / 3600); // Convert to hours
+            // Log what's in resources
+            sessionLogger.info('Pterodactyl', `Server ${serverID} resources:`, JSON.stringify(status.attributes.resources, null, 2));
+            
+            // Look for ANY uptime field in the actual response
+            const resources = status.attributes.resources || {};
+            
+            // Check for common uptime field names
+            if (resources.uptime !== undefined) {
+                // Pterodactyl typically returns uptime in milliseconds
+                const uptimeMs = resources.uptime;
+                const uptimeHours = Math.floor(uptimeMs / (1000 * 3600));
+                sessionLogger.info('Pterodactyl', `Server ${serverID}: Found uptime field = ${uptimeMs}ms = ${uptimeHours}h`);
+                return uptimeHours;
             }
             
-            // Fallback: if no uptime in response, check memory usage as indicator
-            // If server is using memory, it's likely been running for a while
-            const memoryMB = status.attributes.resources?.memory_bytes ? 
-                status.attributes.resources.memory_bytes / (1024 * 1024) : 0;
+            if (resources.uptime_in_seconds !== undefined) {
+                const uptimeSeconds = resources.uptime_in_seconds;
+                const uptimeHours = Math.floor(uptimeSeconds / 3600);
+                sessionLogger.info('Pterodactyl', `Server ${serverID}: Found uptime_in_seconds = ${uptimeSeconds}s = ${uptimeHours}h`);
+                return uptimeHours;
+            }
             
-            // If using significant memory (>100MB), assume it's been running for a while
-            // This is a rough estimate when uptime isn't directly available
-            return memoryMB > 100 ? 24 : 0; // Conservative estimate
+            // Log ALL available fields
+            sessionLogger.warn('Pterodactyl', `Server ${serverID}: No uptime field found. ALL available fields: ${Object.keys(resources).join(', ')}`);
+            
+            // Return 0 for safety when no uptime is found
+            return 0;
             
         } catch (error) {
-            console.error(`Error getting uptime for server ${serverID}:`, error.message);
+            sessionLogger.error('Pterodactyl', `Error getting uptime for server ${serverID}`, error.message);
             return 0; // Return 0 on error to be safe
         }
     },
