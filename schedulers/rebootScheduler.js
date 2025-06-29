@@ -730,18 +730,19 @@ module.exports = {
                 rebootInfo.startupStartTime = Date.now();
             }
             
-            // Monitor startup with timeout
+            // Monitor startup with timeout and return success status
             const success = await this.monitorServerStartup(server);
             
-            if (success) {
-                await this.completeServerReboot(server, true);
-            } else {
-                await this.handleRebootFailure(server);
+            if (!success) {
+                throw new Error('Server startup monitoring failed');
             }
+            
+            // SUCCESS - let executeFullServerReboot handle completion
+            return true;
             
         } catch (error) {
             sessionLogger.error('RebootScheduler', `Error starting server ${server.name}:`, error.message);
-            await this.handleRebootFailure(server);
+            throw error; // Re-throw to let executeFullServerReboot handle it
         }
     },
 
@@ -782,6 +783,14 @@ module.exports = {
     completeServerReboot: async function (server, success) {
         const rebootInfo = this.state.activeReboots.get(server.serverId);
         
+        // Ensure todayStats and retryAttempts exist
+        if (!this.state.todayStats) {
+            this.state.todayStats = { successfulReboots: 0, failedReboots: 0, retryAttempts: {} };
+        }
+        if (!this.state.todayStats.retryAttempts) {
+            this.state.todayStats.retryAttempts = {};
+        }
+        
         if (success) {
             sessionLogger.info('RebootScheduler', `Successfully rebooted ${server.name}`);
             this.state.todayStats.successfulReboots++;
@@ -790,9 +799,13 @@ module.exports = {
             this.state.todayStats.failedReboots++;
         }
         
-        // Track retry attempts
-        if (rebootInfo) {
-            this.state.todayStats.retryAttempts[server.serverId] = rebootInfo.attempts;
+        // Track retry attempts safely
+        if (rebootInfo && rebootInfo.attempts) {
+            try {
+                this.state.todayStats.retryAttempts[server.serverId] = rebootInfo.attempts;
+            } catch (error) {
+                sessionLogger.error('RebootScheduler', `Error tracking retry attempts for ${server.name}:`, error.message);
+            }
         }
         
         // Remove from active reboots
