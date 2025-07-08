@@ -30,19 +30,98 @@ const header = {
 
 module.exports = {
     /**
-     * Gets the status of a server.
+     * Safe API request wrapper with response validation
+     */
+    safeApiRequest: async function(method, url, data = null, options = {}) {
+        const maxRetries = 3;
+        const retryDelay = 2000;
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                const config = {
+                    method: method,
+                    url: url,
+                    headers: header,
+                    timeout: 30000, // 30 second timeout
+                    validateStatus: (status) => status < 500, // Don't throw on 4xx errors
+                    ...options
+                };
+                
+                if (data) {
+                    config.data = data;
+                }
+                
+                const response = await axios(config);
+                
+                // Check for error responses
+                if (response.status >= 400) {
+                    throw new Error(`API returned ${response.status}: ${response.statusText}`);
+                }
+                
+                // Validate response structure (allow empty data for some endpoints)
+                if (response.data === undefined) {
+                    throw new Error('API returned undefined response');
+                }
+                
+                return response;
+                
+            } catch (error) {
+                sessionLogger.error('Pterodactyl', 
+                    `API request failed (attempt ${attempt}/${maxRetries}): ${error.message}`);
+                
+                if (attempt < maxRetries) {
+                    await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
+                } else {
+                    // Enhanced error with more context
+                    const enhancedError = new Error(
+                        `Pterodactyl API error after ${maxRetries} attempts: ${error.message}`
+                    );
+                    enhancedError.originalError = error;
+                    enhancedError.url = url;
+                    enhancedError.method = method;
+                    throw enhancedError;
+                }
+            }
+        }
+    },
+
+    /**
+     * Gets the status of a server with enhanced error handling.
      * @param {string} serverID Id of the server on Pterodactyl.
      * @returns Object containing the status of the server.
      */
     getStatus: async function (serverID) {
         try {
-            let response = await axios.get(`${pterodactylHostName}api/client/servers/${serverID}/resources`, {
-                headers: header
-            });
-            //console.log(response);
+            const response = await this.safeApiRequest(
+                'GET',
+                `${pterodactylHostName}api/client/servers/${serverID}/resources`
+            );
+            
+            // Validate response structure
+            if (!response.data || !response.data.attributes) {
+                throw new Error('Invalid status response structure');
+            }
+            
             return response.data;
+            
         } catch (error) {
-            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
+            sessionLogger.error('Pterodactyl', 
+                `Failed to get status for server ${serverID}:`, error.message);
+            
+            // Return a safe default instead of undefined
+            return {
+                attributes: {
+                    current_state: 'unknown',
+                    resources: {
+                        memory_bytes: 0,
+                        cpu_absolute: 0,
+                        disk_bytes: 0,
+                        network_rx_bytes: 0,
+                        network_tx_bytes: 0,
+                        uptime: 0
+                    }
+                }
+            };
         }
     },
 
@@ -123,22 +202,30 @@ module.exports = {
     },
 
     /**
-     * Sends a power action to be executed on the server.
+     * Sends a power action to be executed on the server with validation.
      * @param {string} serverID Id of the server on Pterodactyl.
      * @param {string} action Action to be executed on the server. Options: "start", "stop", "restart", "kill".
      * @returns 
      */
     sendPowerAction: async function (serverID, action) {
         try {
-            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/power`, {
-                signal: action
-            }, {
-                headers: header
-            });
-            //console.log(response);
-            return response.data;
+            const validActions = ['start', 'stop', 'restart', 'kill'];
+            if (!validActions.includes(action)) {
+                throw new Error(`Invalid power action: ${action}`);
+            }
+            
+            const response = await this.safeApiRequest(
+                'POST',
+                `${pterodactylHostName}api/client/servers/${serverID}/power`,
+                { signal: action }
+            );
+            
+            return response.data || { success: true };
+            
         } catch (error) {
-            sessionLogger.error('Pterodactyl', 'API request failed', error.response?.data || error.message);
+            sessionLogger.error('Pterodactyl', 
+                `Failed to send power action ${action} to server ${serverID}:`, error.message);
+            throw error;
         }
     },
 
@@ -233,23 +320,54 @@ module.exports = {
     },
 
     /**
-     * Executes a command on the server.
+     * Executes a command on the server with validation.
      * @param {string} serverID Id of the server on Pterodactyl.
      * @param {string} command Command to be executed on the server.
      */
     sendCommand: async function (serverID, command) {
         try {
-            let response = await axios.post(`${pterodactylHostName}api/client/servers/${serverID}/command`, {
-                command: command,
-            }, {
-                headers: header
-            });
-            //console.log(response);
-            return response.data;
-        } catch (error) {
-            if (error.response.status != 502) {
-                sessionLogger.error('Pterodactyl', 'Command execution failed:', error.response.data);
+            if (!command || typeof command !== 'string') {
+                throw new Error('Invalid command: must be a non-empty string');
             }
+            
+            // Use axios directly for commands since they often return empty responses
+            const response = await axios.post(
+                `${pterodactylHostName}api/client/servers/${serverID}/command`,
+                { command: command },
+                { 
+                    headers: header,
+                    timeout: 15000, // 15 second timeout for commands
+                    validateStatus: (status) => status < 500
+                }
+            );
+            
+            // Commands often return empty responses - this is normal
+            if (response.status >= 200 && response.status < 300) {
+                return { success: true, data: response.data };
+            } else if (response.status >= 400) {
+                throw new Error(`Command failed with status ${response.status}`);
+            }
+            
+            return response.data || { success: true };
+            
+        } catch (error) {
+            // Don't throw on 502 errors (server might be restarting)
+            if (error.response && error.response.status === 502) {
+                sessionLogger.debug('Pterodactyl', 
+                    `502 error sending command to ${serverID} (server may be restarting)`);
+                return { success: true };
+            }
+            
+            // Handle timeout errors gracefully
+            if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+                sessionLogger.warn('Pterodactyl', 
+                    `Command timeout for server ${serverID} - command may still execute`);
+                return { success: true, timeout: true };
+            }
+            
+            sessionLogger.error('Pterodactyl', 
+                `Failed to send command to server ${serverID}:`, error.message);
+            throw error;
         }
     },
 
@@ -359,49 +477,68 @@ module.exports = {
     },
 
     /**
-     *  Discovers all available nodes from Pterodactyl admin API
+     *  Discovers all available nodes from Pterodactyl admin API with validation
      * @returns {Array} Array of node objects with resource information
      */
     getNodes: async function () {
         try {
-            const response = await axios.get(`${pterodactylHostName}api/application/nodes`, {
-                headers: header
-            });
+            const response = await this.safeApiRequest(
+                'GET',
+                `${pterodactylHostName}api/application/nodes`
+            );
             
-            return response.data.data.map(node => ({
-                id: node.attributes.uuid,
-                name: node.attributes.name,
-                fqdn: node.attributes.fqdn,
-                memory: {
-                    total: node.attributes.memory,
-                    allocated: node.attributes.allocated_resources.memory
-                },
-                disk: {
-                    total: node.attributes.disk,
-                    allocated: node.attributes.allocated_resources.disk
-                },
-                capacity: 4 // Default safe concurrent server capacity (configurable via maxConcurrentReboots)
-            }));
+            // Validate response structure
+            if (!response.data || !response.data.data || !Array.isArray(response.data.data)) {
+                throw new Error('Invalid nodes response structure');
+            }
+            
+            return response.data.data.map(node => {
+                // Validate node structure
+                if (!node.attributes) {
+                    throw new Error('Invalid node structure: missing attributes');
+                }
+                
+                return {
+                    id: node.attributes.uuid || `node-${node.attributes.name}`,
+                    name: node.attributes.name || 'Unknown Node',
+                    fqdn: node.attributes.fqdn || 'unknown.fqdn',
+                    memory: {
+                        total: node.attributes.memory || 0,
+                        allocated: node.attributes.allocated_resources?.memory || 0
+                    },
+                    disk: {
+                        total: node.attributes.disk || 0,
+                        allocated: node.attributes.allocated_resources?.disk || 0
+                    },
+                    capacity: 4 // Default safe concurrent server capacity
+                };
+            });
         } catch (error) {
-            sessionLogger.error('Pterodactyl', 'Error fetching nodes:', error.response?.data || error.message);
+            sessionLogger.error('Pterodactyl', 'Error fetching nodes:', error.message);
             return [];
         }
     },
 
     /**
-     *  Gets the node assignment for a specific server
+     *  Gets the node assignment for a specific server with validation
      * @param {string} serverID Server ID
      * @returns {string|null} Node UUID/ID or null if not found
      */
     getServerNode: async function (serverID) {
         try {
-            const response = await axios.get(`${pterodactylHostName}api/client/servers/${serverID}`, {
-                headers: header
-            });
+            const response = await this.safeApiRequest(
+                'GET',
+                `${pterodactylHostName}api/client/servers/${serverID}`
+            );
             
-            return response.data.attributes.node;
+            // Validate response structure
+            if (!response.data || !response.data.attributes) {
+                throw new Error('Invalid server response structure');
+            }
+            
+            return response.data.attributes.node || null;
         } catch (error) {
-            sessionLogger.error('Pterodactyl', `Error getting node for server ${serverID}:`, error.response?.data || error.message);
+            sessionLogger.error('Pterodactyl', `Error getting node for server ${serverID}:`, error.message);
             return null;
         }
     }

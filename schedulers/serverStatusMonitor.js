@@ -177,13 +177,13 @@ function generateServerEmbed(serverList, shardList) {
         let str = "";
 
         for (let s of versionObj[key]) {
-            var statusEmoji = "🔴";
+            var statusEmoji = "<:d_:1389899743286530110>";
 
             // Check if server is online
             const isOnline = shardList.some(obj => obj.name === s.name);
             if (isOnline) {
                 onlineCount++;
-                statusEmoji = "🟢";
+                statusEmoji = "<:u:1389899745866027090>";
             }
 
             // Get crash status from crash detector
@@ -193,9 +193,9 @@ function generateServerEmbed(serverList, shardList) {
             if (crashStatus) {
                 // Override emoji based on crash status
                 if (crashStatus.currentState === 'starting' && crashStatus.recentCrashes > 0) {
-                    statusEmoji = "🟡"; // Yellow for crashed but restarting
+                    statusEmoji = "<:c:1389899748370157609>"; // Crashed but restarting
                 } else if (crashStatus.recentCrashes >= 3) {
-                    statusEmoji = "🔥"; // Fire emoji for crash loop
+                    statusEmoji = "<:c:1389899748370157609>"; // Crashed (crash loop)
                 }
                 
                 // Get status text (e.g., "(CRASHED, starting back!)")

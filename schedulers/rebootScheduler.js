@@ -5,6 +5,7 @@ const timeManager = require("../modules/timeManager");
 const functions = require("../modules/functions");
 const { EmbedBuilder } = require("discord.js");
 const sessionLogger = require("../modules/sessionLogger");
+const PteroStats = require("../modules/pteroStats");
 
 module.exports = {
     name: 'rebootScheduler',
@@ -16,22 +17,125 @@ module.exports = {
         "serverStartupTimeout": 20, // Minutes
         "batchingStrategy": "auto", // "auto" = dynamic based on nodes, "fixed" = use maxBatchSize
         "maxBatchSize": 12, // Only used if batchingStrategy is "fixed"
-        "playerThreshold": 25 // Reboot when less than this many players online
+        "playerThreshold": 25, // Reboot when less than this many players online
+        "apiRetryDelay": 2000, // NEW: Delay between API retries
+        "apiMaxRetries": 3, // NEW: Max API call retries
+        "nodeRebootDelay": 5000, // NEW: Delay between nodes
+        "serverRebootDelay": 3000 // NEW: Delay between servers
     },
 
-    // Internal state tracking
+    // Enhanced state tracking with thread-safe operations
     state: {
         isRebootInProgress: false,
         rebootStartTime: null,
         rebootQueue: [],
         activeReboots: new Map(), // serverId -> { attempts, startTime, nodeId }
+        failedServers: new Set(), // NEW: Track failed servers
+        completedServers: new Set(), // NEW: Track completed servers
+        apiCallCount: 0, // NEW: Track API calls
+        lastApiCall: 0, // NEW: Rate limiting
+        serverMonitors: new Map(), // NEW: serverId -> PteroStats instance for real-time monitoring
         todayStats: {
             lowestPlayerCount: null,
             lowestPlayerTime: null,
             rebootTriggered: false,
-            rebootCompleted: false
+            rebootCompleted: false,
+            retryAttempts: {}
         }
     },
+
+    // NEW: Thread-safe state operations
+    stateOperations: {
+        addActiveReboot(serverId, data) {
+            if (module.exports.state.activeReboots.has(serverId)) {
+                sessionLogger.warn('RebootScheduler', `Server ${serverId} already in active reboots`);
+                return false;
+            }
+            module.exports.state.activeReboots.set(serverId, {
+                ...data,
+                startTime: Date.now(),
+                attempts: 0
+            });
+            return true;
+        },
+        
+        removeActiveReboot(serverId) {
+            return module.exports.state.activeReboots.delete(serverId);
+        },
+        
+        isServerActive(serverId) {
+            return module.exports.state.activeReboots.has(serverId) ||
+                   module.exports.state.completedServers.has(serverId);
+        },
+        
+        markServerFailed(serverId) {
+            module.exports.state.failedServers.add(serverId);
+            module.exports.state.activeReboots.delete(serverId);
+        },
+        
+        markServerCompleted(serverId) {
+            module.exports.state.completedServers.add(serverId);
+            module.exports.state.activeReboots.delete(serverId);
+        }
+    },
+
+    // NEW: Real-time monitoring operations
+    monitoringOperations: {
+        /**
+         * Start real-time monitoring for a server
+         * @param {string} serverId Server ID
+         * @returns {PteroStats} PteroStats instance
+         */
+        startMonitoring(serverId) {
+            if (module.exports.state.serverMonitors.has(serverId)) {
+                return module.exports.state.serverMonitors.get(serverId);
+            }
+            
+            const monitor = new PteroStats();
+            monitor.start(serverId);
+            module.exports.state.serverMonitors.set(serverId, monitor);
+            
+            sessionLogger.debug('RebootScheduler', `Started real-time monitoring for server ${serverId}`);
+            return monitor;
+        },
+
+        /**
+         * Stop monitoring for a server
+         * @param {string} serverId Server ID
+         */
+        stopMonitoring(serverId) {
+            const monitor = module.exports.state.serverMonitors.get(serverId);
+            if (monitor && monitor.socket) {
+                monitor.socket.disconnect();
+            }
+            module.exports.state.serverMonitors.delete(serverId);
+            sessionLogger.debug('RebootScheduler', `Stopped monitoring for server ${serverId}`);
+        },
+
+        /**
+         * Get real-time stats for a server
+         * @param {string} serverId Server ID
+         * @returns {Object|null} Server stats or null if not monitored
+         */
+        getRealtimeStats(serverId) {
+            const monitor = module.exports.state.serverMonitors.get(serverId);
+            return monitor ? monitor.getStats() : null;
+        },
+
+        /**
+         * Clean up all monitoring connections
+         */
+        cleanupAllMonitoring() {
+            for (const [serverId, monitor] of module.exports.state.serverMonitors) {
+                if (monitor && monitor.socket) {
+                    monitor.socket.disconnect();
+                }
+            }
+            module.exports.state.serverMonitors.clear();
+            sessionLogger.info('RebootScheduler', 'Cleaned up all server monitoring connections');
+        }
+    },
+
 
     /**
      * Starts the reboot scheduler
@@ -195,10 +299,23 @@ module.exports = {
         
         sessionLogger.info('RebootScheduler', `Checking uptime for ${servers.length} servers (minimum: ${minimumUptimeHours}h)...`);
         
-        // Check uptime for all servers in parallel for efficiency
+        // Check uptime for all servers using real-time websocket data
         const uptimePromises = servers.map(async (server) => {
             try {
-                const uptimeHours = await pterodactyl.getServerUptime(server.serverId);
+                // Start real-time monitoring for this server
+                const monitor = this.monitoringOperations.startMonitoring(server.serverId);
+                
+                // Wait a moment for initial data to arrive
+                await functions.sleep(2000);
+                
+                const stats = monitor.getStats();
+                let uptimeHours = 0;
+                
+                if (stats.state === 'running' && stats.uptime > 0) {
+                    // uptime is in milliseconds, convert to hours
+                    uptimeHours = Math.floor(stats.uptime / (1000 * 3600));
+                }
+                
                 return { server, uptimeHours };
             } catch (error) {
                 sessionLogger.error('RebootScheduler', `Error checking uptime for ${server.name}:`, error.message);
@@ -333,69 +450,93 @@ module.exports = {
     },
 
     /**
-     * Process the reboot queue with TRUE PARALLEL EXECUTION
-     * PERFORMANCE FIX: Dynamic servers simultaneously across nodes
-     * @param {object} config Runtime configuration options
+     * Process reboot queue with enhanced batching and error recovery
      */
     processRebootQueue: async function (config = this.defaultConfig) {
-        sessionLogger.info('RebootScheduler', `Starting PARALLEL reboot of ${this.state.rebootQueue.length} servers`);
+        sessionLogger.info('RebootScheduler', 
+            `Starting enhanced reboot of ${this.state.rebootQueue.length} servers`);
         
-        // Discover real node infrastructure
-        const realNodes = await this.discoverRealNodes();
+        // Reset tracking states
+        this.state.failedServers.clear();
+        this.state.completedServers.clear();
+        this.state.apiCallCount = 0;
         
-        // Map servers to real nodes
-        const serverNodeMapping = await this.mapServersToRealNodes(this.state.rebootQueue, realNodes);
+        // Discover nodes with error handling
+        let realNodes = [];
+        try {
+            realNodes = await this.discoverRealNodes();
+        } catch (error) {
+            sessionLogger.error('RebootScheduler', 'Failed to discover nodes, using defaults');
+            realNodes = [
+                { id: 'node-1', name: 'Default Node 1', capacity: 4 },
+                { id: 'node-2', name: 'Default Node 2', capacity: 4 },
+                { id: 'node-3', name: 'Default Node 3', capacity: 4 }
+            ];
+        }
         
-        // DYNAMIC BATCHING - Calculate optimal batch size automatically
-        const batchConfig = this.calculateOptimalBatching(realNodes, this.state.rebootQueue.length, config);
+        // Simple round-robin server distribution
+        const serverNodeMapping = new Map();
+        this.state.rebootQueue.forEach((server, index) => {
+            const nodeIndex = index % realNodes.length;
+            serverNodeMapping.set(server.serverId, realNodes[nodeIndex].id);
+        });
         
-        sessionLogger.info('RebootScheduler', `Processing ${this.state.rebootQueue.length} servers in ${batchConfig.totalBatches} dynamic batches`);
-        sessionLogger.info('RebootScheduler', `Batch strategy: ${batchConfig.strategy}, Max per batch: ${batchConfig.batchSize}`);
+        // Process in smaller, manageable batches
+        const batchSize = Math.min(
+            config.maxBatchSize || 12,
+            realNodes.length * (config.maxConcurrentReboots || 4)
+        );
         
-        for (let batchIndex = 0; batchIndex < batchConfig.totalBatches; batchIndex++) {
-            const batchStart = batchIndex * batchConfig.batchSize;
-            const batchEnd = Math.min(batchStart + batchConfig.batchSize, this.state.rebootQueue.length);
+        const totalBatches = Math.ceil(this.state.rebootQueue.length / batchSize);
+        
+        for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+            const batchStart = batchIndex * batchSize;
+            const batchEnd = Math.min(batchStart + batchSize, this.state.rebootQueue.length);
             const currentBatch = this.state.rebootQueue.slice(batchStart, batchEnd);
             
-            sessionLogger.info('RebootScheduler', `BATCH ${batchIndex + 1}/${batchConfig.totalBatches}: Processing ${currentBatch.length} servers SIMULTANEOUSLY`);
+            sessionLogger.info('RebootScheduler', 
+                `Processing batch ${batchIndex + 1}/${totalBatches} (${currentBatch.length} servers)`);
             
-            // Group current batch by nodes
-            const batchByNode = this.groupServersByNode(currentBatch, serverNodeMapping);
-            
-            // Start ALL nodes in parallel - THIS IS THE FIX!
-            const nodePromises = [];
-            for (const [nodeId, servers] of batchByNode.entries()) {
-                sessionLogger.info('RebootScheduler', `Node ${nodeId}: Starting ${servers.length} servers in parallel`);
-                const nodePromise = this.processNodeBatch(nodeId, servers, config);
-                nodePromises.push(nodePromise);
-            }
-            
-            // Wait for ALL nodes to complete simultaneously - using allSettled for fault tolerance
-            const nodeResults = await Promise.allSettled(nodePromises);
-            
-            // Process results and log individual node failures
-            let successfulNodes = 0;
-            let failedNodes = 0;
-            
-            nodeResults.forEach((result, index) => {
-                if (result.status === 'fulfilled') {
-                    successfulNodes++;
-                } else {
-                    failedNodes++;
-                    sessionLogger.error('RebootScheduler', `Node ${index + 1} failed:`, result.reason?.message || result.reason);
+            // Process servers in batch with controlled concurrency
+            const batchPromises = currentBatch.map(async (server) => {
+                const nodeId = serverNodeMapping.get(server.serverId);
+                
+                // Add small delay between server starts to prevent API overload
+                const serverIndex = currentBatch.indexOf(server);
+                await functions.sleep(serverIndex * (config.serverRebootDelay || 3000));
+                
+                try {
+                    return await this.executeFullServerReboot(server, nodeId);
+                } catch (error) {
+                    sessionLogger.error('RebootScheduler', 
+                        `[${server.name}] Unhandled error: ${error.message}`);
+                    return { success: false, reason: error.message };
                 }
             });
             
-            sessionLogger.info('RebootScheduler', `BATCH ${batchIndex + 1} COMPLETED: ${successfulNodes} nodes successful, ${failedNodes} nodes failed`);
+            // Wait for batch completion
+            const batchResults = await Promise.allSettled(batchPromises);
             
-            // Brief delay between batches for stability
-            if (batchIndex + 1 < batchConfig.totalBatches) {
-                sessionLogger.info('RebootScheduler', 'Cooling down 30 seconds before next batch...');
-                await functions.sleep(30000);
+            // Log batch results
+            const batchSuccess = batchResults.filter(r => 
+                r.status === 'fulfilled' && r.value?.success).length;
+            const batchFailed = batchResults.length - batchSuccess;
+            
+            sessionLogger.info('RebootScheduler', 
+                `Batch ${batchIndex + 1} completed: ${batchSuccess} success, ${batchFailed} failed`);
+            
+            // Delay between batches
+            if (batchIndex + 1 < totalBatches) {
+                const batchDelay = config.nodeRebootDelay || 30000;
+                sessionLogger.info('RebootScheduler', 
+                    `Waiting ${batchDelay / 1000} seconds before next batch...`);
+                await functions.sleep(batchDelay);
             }
         }
         
-        sessionLogger.info('RebootScheduler', 'ALL SERVERS PROCESSED - MASSIVE PERFORMANCE IMPROVEMENT ACHIEVED!');
+        sessionLogger.info('RebootScheduler', 
+            `Reboot queue processing completed. API calls made: ${this.state.apiCallCount}`);
+        
         await this.completeRebootSequence();
     },
 
@@ -612,43 +753,219 @@ module.exports = {
     },
 
     /**
-     * Execute complete reboot for a single server (warnings + reboot + startup)
-     * @param {object} server Server object
-     * @param {string} nodeId Node ID
-     * @returns {Promise} Promise that resolves when server reboot is complete
+     * Execute complete reboot for a single server with enhanced error handling
      */
     executeFullServerReboot: async function (server, nodeId) {
-        // PREVENT DUPLICATE SERVER REBOOTS
-        if (this.state.activeReboots.has(server.serverId)) {
-            sessionLogger.warn('RebootScheduler', `[${server.name}] Already rebooting, skipping duplicate request`);
-            return;
+        // Enhanced duplicate prevention
+        if (this.stateOperations.isServerActive(server.serverId)) {
+            sessionLogger.warn('RebootScheduler', 
+                `[${server.name}] Already being processed, skipping`);
+            return { success: false, reason: 'duplicate' };
         }
         
-        sessionLogger.info('RebootScheduler', `[${server.name}] Starting full reboot sequence`);
-        
-        // Track this reboot
-        this.state.activeReboots.set(server.serverId, {
+        // Add to active reboots with validation
+        if (!this.stateOperations.addActiveReboot(server.serverId, {
             server: server,
             nodeId: nodeId,
-            attempts: 1,
-            startTime: Date.now(),
-            stage: 'warnings',
-            warningStep: 0
-        });
+            stage: 'starting'
+        })) {
+            return { success: false, reason: 'state_conflict' };
+        }
+        
+        sessionLogger.info('RebootScheduler', `[${server.name}] Starting reboot sequence`);
         
         try {
-            // Execute warning sequence (includes server stop)
-            await this.executeRebootWarnings(server);
+            // Phase 1: Execute warnings with timeout protection
+            await this.executeRebootWarningsEnhanced(server);
             
-            // Start server and monitor startup
-            await this.startServerAndMonitor(server);
+            // Phase 2: Ensure server is stopped
+            await this.ensureServerStopped(server);
             
+            // Phase 3: Start server with monitoring
+            await this.startServerWithMonitoring(server);
+            
+            // Success
             sessionLogger.info('RebootScheduler', `[${server.name}] Reboot completed successfully`);
-            await this.completeServerReboot(server, true);
+            this.stateOperations.markServerCompleted(server.serverId);
+            
+            // Clean up monitoring for this server
+            this.monitoringOperations.stopMonitoring(server.serverId);
+            
+            if (!this.state.todayStats.successfulReboots) {
+                this.state.todayStats.successfulReboots = 0;
+            }
+            this.state.todayStats.successfulReboots++;
+            
+            return { success: true };
             
         } catch (error) {
-            sessionLogger.error('RebootScheduler', `[${server.name}] Reboot failed:`, error.message);
-            await this.handleRebootFailure(server);
+            sessionLogger.error('RebootScheduler', 
+                `[${server.name}] Reboot failed: ${error.message}`);
+            
+            // Handle failure with retry logic
+            const rebootInfo = this.state.activeReboots.get(server.serverId);
+            if (rebootInfo) {
+                rebootInfo.attempts++;
+                
+                const maxRetries = this.runtimeConfig?.rebootRetryLimit || 3;
+                if (rebootInfo.attempts < maxRetries) {
+                    sessionLogger.info('RebootScheduler', 
+                        `[${server.name}] Scheduling retry (attempt ${rebootInfo.attempts + 1}/${maxRetries})`);
+                    
+                    // Wait before retry
+                    await functions.sleep(10000 * rebootInfo.attempts); // Exponential backoff
+                    
+                    // Recursive retry
+                    return await this.executeFullServerReboot(server, nodeId);
+                }
+            }
+            
+            // Max retries reached
+            this.stateOperations.markServerFailed(server.serverId);
+            
+            // Clean up monitoring for failed server
+            this.monitoringOperations.stopMonitoring(server.serverId);
+            
+            if (!this.state.todayStats.failedReboots) {
+                this.state.todayStats.failedReboots = 0;
+            }
+            this.state.todayStats.failedReboots++;
+            
+            await this.alertStaffServerFailure(server, error.message);
+            
+            return { success: false, reason: error.message };
+        }
+    },
+
+    /**
+     * Enhanced warning sequence with better error handling
+     */
+    executeRebootWarningsEnhanced: async function (server) {
+        const warnings = [
+            { command: 'say SCHEDULED REBOOT IN 15 MINUTES - Please prepare to disconnect', delay: 300000 },
+            { command: 'say SCHEDULED REBOOT IN 10 MINUTES', delay: 300000 },
+            { command: 'say SCHEDULED REBOOT IN 5 MINUTES', delay: 240000 },
+            { command: 'say SCHEDULED REBOOT IN 1 MINUTE - SAVE YOUR WORK', delay: 45000 },
+            { command: 'say REBOOTING IN 15 SECONDS', delay: 10000 },
+            { command: 'save-all', delay: 5000 }
+        ];
+        
+        for (let i = 0; i < warnings.length; i++) {
+            try {
+                await pterodactyl.sendCommand(server.serverId, warnings[i].command);
+                
+                sessionLogger.debug('RebootScheduler', 
+                    `[${server.name}] Sent warning: ${warnings[i].command}`);
+                
+                if (i < warnings.length - 1) {
+                    await functions.sleep(warnings[i].delay);
+                }
+                
+            } catch (error) {
+                sessionLogger.warn('RebootScheduler', 
+                    `[${server.name}] Warning command failed: ${error.message}`);
+                // Continue with next warning
+            }
+        }
+    },
+
+    /**
+     * Ensure server is properly stopped with verification
+     */
+    ensureServerStopped: async function (server) {
+        const maxStopAttempts = 3;
+        
+        for (let attempt = 1; attempt <= maxStopAttempts; attempt++) {
+            try {
+                // Send stop command
+                await pterodactyl.sendPowerAction(server.serverId, 'stop');
+                
+                // Wait for server to stop
+                const stopped = await this.waitForServerState(server, 'offline', 60000);
+                
+                if (stopped) {
+                    sessionLogger.info('RebootScheduler', 
+                        `[${server.name}] Server stopped successfully`);
+                    return true;
+                }
+                
+                // If not stopped, try kill
+                sessionLogger.warn('RebootScheduler', 
+                    `[${server.name}] Server not stopping, sending kill command`);
+                
+                await pterodactyl.sendPowerAction(server.serverId, 'kill');
+                
+                await functions.sleep(5000);
+                
+            } catch (error) {
+                sessionLogger.error('RebootScheduler', 
+                    `[${server.name}] Stop attempt ${attempt} failed: ${error.message}`);
+            }
+        }
+        
+        throw new Error('Failed to stop server after multiple attempts');
+    },
+
+    /**
+     * Start server with enhanced monitoring
+     */
+    startServerWithMonitoring: async function (server) {
+        // Start the server
+        await pterodactyl.sendPowerAction(server.serverId, 'start');
+        
+        sessionLogger.info('RebootScheduler', `[${server.name}] Start command sent`);
+        
+        // Wait for server to be running
+        const started = await this.waitForServerState(server, 'running', 1200000); // 20 min timeout
+        
+        if (!started) {
+            throw new Error('Server failed to start within timeout period');
+        }
+        
+        sessionLogger.info('RebootScheduler', `[${server.name}] Server is running`);
+        
+        // Additional health check delay
+        await functions.sleep(30000); // 30 seconds for server to stabilize
+        
+        return true;
+    },
+
+    /**
+     * Wait for server to reach specific state using real-time monitoring
+     */
+    waitForServerState: async function (server, targetState, timeout) {
+        const startTime = Date.now();
+        const checkInterval = 2000; // Check every 2 seconds (faster with websockets)
+        
+        // Start real-time monitoring for this server
+        const monitor = this.monitoringOperations.startMonitoring(server.serverId);
+        
+        try {
+            while (Date.now() - startTime < timeout) {
+                try {
+                    const stats = monitor.getStats();
+                    
+                    if (stats.state === targetState) {
+                        sessionLogger.debug('RebootScheduler', 
+                            `[${server.name}] Reached target state: ${targetState}`);
+                        return true;
+                    }
+                    
+                    await functions.sleep(checkInterval);
+                    
+                } catch (error) {
+                    sessionLogger.warn('RebootScheduler', 
+                        `[${server.name}] Real-time status check error: ${error.message}`);
+                    await functions.sleep(checkInterval);
+                }
+            }
+            
+            sessionLogger.warn('RebootScheduler', 
+                `[${server.name}] Timeout waiting for state: ${targetState}`);
+            return false;
+        } finally {
+            // Keep monitoring active during reboot process - don't stop here
+            // Monitoring will be cleaned up in executeFullServerReboot completion
         }
     },
 
@@ -747,31 +1064,43 @@ module.exports = {
     },
 
     /**
-     * Monitor server startup with timeout
+     * Monitor server startup with real-time websocket data
      * @param {object} server Server object
      * @returns {boolean} Success status
      */
     monitorServerStartup: async function (server) {
         const timeout = 20 * 60 * 1000; // 20 minutes
         const startTime = Date.now();
+        const checkInterval = 5000; // Check every 5 seconds (faster with websockets)
+        
+        // Use existing monitoring or start new one
+        const monitor = this.monitoringOperations.startMonitoring(server.serverId);
+        
+        sessionLogger.info('RebootScheduler', `[${server.name}] Monitoring startup with real-time data...`);
         
         while (Date.now() - startTime < timeout) {
             try {
-                const status = await pterodactyl.getStatus(server.serverId);
+                const stats = monitor.getStats();
                 
-                if (status.attributes.current_state === 'running') {
+                if (stats.state === 'running') {
                     // Server is running, consider it successful
+                    sessionLogger.info('RebootScheduler', `[${server.name}] Server startup confirmed via websocket`);
                     return true;
                 }
                 
-                // Wait 30 seconds before next check
-                await functions.sleep(30000);
+                // Log current state for debugging
+                sessionLogger.debug('RebootScheduler', `[${server.name}] Current state: ${stats.state}`);
+                
+                // Wait before next check
+                await functions.sleep(checkInterval);
                 
             } catch (error) {
-                sessionLogger.error('RebootScheduler', `Error checking status for ${server.name}:`, error.message);
+                sessionLogger.error('RebootScheduler', `Error checking real-time status for ${server.name}:`, error.message);
+                await functions.sleep(checkInterval);
             }
         }
         
+        sessionLogger.warn('RebootScheduler', `[${server.name}] Startup monitoring timeout reached`);
         return false; // Timeout reached
     },
 
@@ -969,31 +1298,68 @@ module.exports = {
     },
 
     /**
-     * Emergency cleanup function - can be called manually if needed
+     * Emergency cleanup with validation
      */
     emergencyCleanup: async function () {
         sessionLogger.warn('RebootScheduler', '🚨 Performing emergency cleanup...');
         
         try {
-            // Clear all active state
-            this.state.isRebootInProgress = false;
-            this.state.rebootQueue = [];
-            this.state.activeReboots.clear();
-            
-            // Reset today's stats if needed
+            // Save current stats before cleanup
             if (this.state.todayStats.rebootTriggered && !this.state.todayStats.rebootCompleted) {
-                this.state.todayStats.rebootCompleted = true;
-                this.state.todayStats.rebootEndTime = new Date().toISOString();
                 this.state.todayStats.notes = 'Emergency cleanup performed';
+                this.state.todayStats.emergencyCleanupTime = new Date().toISOString();
                 
                 const today = timeManager.getTodayDateString();
                 await mongo.updateRebootHistory(today, this.state.todayStats);
             }
             
+            // Clear all state
+            this.state.isRebootInProgress = false;
+            this.state.rebootQueue = [];
+            this.state.activeReboots.clear();
+            this.state.failedServers.clear();
+            this.state.completedServers.clear();
+            this.state.apiCallCount = 0;
+            
+            // Clean up all websocket monitoring connections
+            this.monitoringOperations.cleanupAllMonitoring();
+            
+            // Reset today stats
+            this.state.todayStats = {
+                lowestPlayerCount: null,
+                lowestPlayerTime: null,
+                rebootTriggered: false,
+                rebootCompleted: false,
+                retryAttempts: {}
+            };
+            
             sessionLogger.info('RebootScheduler', '✅ Emergency cleanup completed');
             return true;
+            
         } catch (error) {
-            sessionLogger.error('RebootScheduler', 'Error during emergency cleanup:', error.message);
+            sessionLogger.error('RebootScheduler', 
+                'Emergency cleanup failed:', error.message);
+            
+            // Last resort - force clear everything
+            this.state = {
+                isRebootInProgress: false,
+                rebootStartTime: null,
+                rebootQueue: [],
+                activeReboots: new Map(),
+                failedServers: new Set(),
+                completedServers: new Set(),
+                apiCallCount: 0,
+                lastApiCall: 0,
+                serverMonitors: new Map(),
+                todayStats: {
+                    lowestPlayerCount: null,
+                    lowestPlayerTime: null,
+                    rebootTriggered: false,
+                    rebootCompleted: false,
+                    retryAttempts: {}
+                }
+            };
+            
             return false;
         }
     },

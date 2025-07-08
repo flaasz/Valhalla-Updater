@@ -58,11 +58,11 @@ module.exports = {
             let str = "";
 
             for (let s of versionObj[key]) {
-                var statusEmoji = "🔴";
+                var statusEmoji = "<:d_:1389899743286530110>";
 
                 if (shardList.some(obj => obj.name === s.name)) {
                     onlineCount++;
-                    statusEmoji = "🟢";
+                    statusEmoji = "<:u:1389899745866027090>";
                 }
 
                 if (s.tag == "PLUS") statusEmoji = "";
