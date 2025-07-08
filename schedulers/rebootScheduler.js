@@ -5,6 +5,7 @@ const timeManager = require("../modules/timeManager");
 const functions = require("../modules/functions");
 const { EmbedBuilder } = require("discord.js");
 const sessionLogger = require("../modules/sessionLogger");
+const PteroStats = require("../modules/pteroStats");
 
 module.exports = {
     name: 'rebootScheduler',
@@ -33,6 +34,7 @@ module.exports = {
         completedServers: new Set(), // NEW: Track completed servers
         apiCallCount: 0, // NEW: Track API calls
         lastApiCall: 0, // NEW: Rate limiting
+        serverMonitors: new Map(), // NEW: serverId -> PteroStats instance for real-time monitoring
         todayStats: {
             lowestPlayerCount: null,
             lowestPlayerTime: null,
@@ -74,6 +76,63 @@ module.exports = {
         markServerCompleted(serverId) {
             module.exports.state.completedServers.add(serverId);
             module.exports.state.activeReboots.delete(serverId);
+        }
+    },
+
+    // NEW: Real-time monitoring operations
+    monitoringOperations: {
+        /**
+         * Start real-time monitoring for a server
+         * @param {string} serverId Server ID
+         * @returns {PteroStats} PteroStats instance
+         */
+        startMonitoring(serverId) {
+            if (module.exports.state.serverMonitors.has(serverId)) {
+                return module.exports.state.serverMonitors.get(serverId);
+            }
+            
+            const monitor = new PteroStats();
+            monitor.start(serverId);
+            module.exports.state.serverMonitors.set(serverId, monitor);
+            
+            sessionLogger.debug('RebootScheduler', `Started real-time monitoring for server ${serverId}`);
+            return monitor;
+        },
+
+        /**
+         * Stop monitoring for a server
+         * @param {string} serverId Server ID
+         */
+        stopMonitoring(serverId) {
+            const monitor = module.exports.state.serverMonitors.get(serverId);
+            if (monitor && monitor.socket) {
+                monitor.socket.disconnect();
+            }
+            module.exports.state.serverMonitors.delete(serverId);
+            sessionLogger.debug('RebootScheduler', `Stopped monitoring for server ${serverId}`);
+        },
+
+        /**
+         * Get real-time stats for a server
+         * @param {string} serverId Server ID
+         * @returns {Object|null} Server stats or null if not monitored
+         */
+        getRealtimeStats(serverId) {
+            const monitor = module.exports.state.serverMonitors.get(serverId);
+            return monitor ? monitor.getStats() : null;
+        },
+
+        /**
+         * Clean up all monitoring connections
+         */
+        cleanupAllMonitoring() {
+            for (const [serverId, monitor] of module.exports.state.serverMonitors) {
+                if (monitor && monitor.socket) {
+                    monitor.socket.disconnect();
+                }
+            }
+            module.exports.state.serverMonitors.clear();
+            sessionLogger.info('RebootScheduler', 'Cleaned up all server monitoring connections');
         }
     },
 
@@ -240,10 +299,23 @@ module.exports = {
         
         sessionLogger.info('RebootScheduler', `Checking uptime for ${servers.length} servers (minimum: ${minimumUptimeHours}h)...`);
         
-        // Check uptime for all servers in parallel for efficiency
+        // Check uptime for all servers using real-time websocket data
         const uptimePromises = servers.map(async (server) => {
             try {
-                const uptimeHours = await pterodactyl.getServerUptime(server.serverId);
+                // Start real-time monitoring for this server
+                const monitor = this.monitoringOperations.startMonitoring(server.serverId);
+                
+                // Wait a moment for initial data to arrive
+                await functions.sleep(2000);
+                
+                const stats = monitor.getStats();
+                let uptimeHours = 0;
+                
+                if (stats.state === 'running' && stats.uptime > 0) {
+                    // uptime is in milliseconds, convert to hours
+                    uptimeHours = Math.floor(stats.uptime / (1000 * 3600));
+                }
+                
                 return { server, uptimeHours };
             } catch (error) {
                 sessionLogger.error('RebootScheduler', `Error checking uptime for ${server.name}:`, error.message);
@@ -716,6 +788,9 @@ module.exports = {
             sessionLogger.info('RebootScheduler', `[${server.name}] Reboot completed successfully`);
             this.stateOperations.markServerCompleted(server.serverId);
             
+            // Clean up monitoring for this server
+            this.monitoringOperations.stopMonitoring(server.serverId);
+            
             if (!this.state.todayStats.successfulReboots) {
                 this.state.todayStats.successfulReboots = 0;
             }
@@ -747,6 +822,9 @@ module.exports = {
             
             // Max retries reached
             this.stateOperations.markServerFailed(server.serverId);
+            
+            // Clean up monitoring for failed server
+            this.monitoringOperations.stopMonitoring(server.serverId);
             
             if (!this.state.todayStats.failedReboots) {
                 this.state.todayStats.failedReboots = 0;
@@ -853,30 +931,42 @@ module.exports = {
     },
 
     /**
-     * Wait for server to reach specific state
+     * Wait for server to reach specific state using real-time monitoring
      */
     waitForServerState: async function (server, targetState, timeout) {
         const startTime = Date.now();
-        const checkInterval = 10000; // Check every 10 seconds
+        const checkInterval = 2000; // Check every 2 seconds (faster with websockets)
         
-        while (Date.now() - startTime < timeout) {
-            try {
-                const status = await pterodactyl.getStatus(server.serverId);
-                
-                if (status && status.attributes && status.attributes.current_state === targetState) {
-                    return true;
+        // Start real-time monitoring for this server
+        const monitor = this.monitoringOperations.startMonitoring(server.serverId);
+        
+        try {
+            while (Date.now() - startTime < timeout) {
+                try {
+                    const stats = monitor.getStats();
+                    
+                    if (stats.state === targetState) {
+                        sessionLogger.debug('RebootScheduler', 
+                            `[${server.name}] Reached target state: ${targetState}`);
+                        return true;
+                    }
+                    
+                    await functions.sleep(checkInterval);
+                    
+                } catch (error) {
+                    sessionLogger.warn('RebootScheduler', 
+                        `[${server.name}] Real-time status check error: ${error.message}`);
+                    await functions.sleep(checkInterval);
                 }
-                
-                await functions.sleep(checkInterval);
-                
-            } catch (error) {
-                sessionLogger.warn('RebootScheduler', 
-                    `[${server.name}] Status check error: ${error.message}`);
-                await functions.sleep(checkInterval);
             }
+            
+            sessionLogger.warn('RebootScheduler', 
+                `[${server.name}] Timeout waiting for state: ${targetState}`);
+            return false;
+        } finally {
+            // Keep monitoring active during reboot process - don't stop here
+            // Monitoring will be cleaned up in executeFullServerReboot completion
         }
-        
-        return false;
     },
 
     /**
@@ -974,31 +1064,43 @@ module.exports = {
     },
 
     /**
-     * Monitor server startup with timeout
+     * Monitor server startup with real-time websocket data
      * @param {object} server Server object
      * @returns {boolean} Success status
      */
     monitorServerStartup: async function (server) {
         const timeout = 20 * 60 * 1000; // 20 minutes
         const startTime = Date.now();
+        const checkInterval = 5000; // Check every 5 seconds (faster with websockets)
+        
+        // Use existing monitoring or start new one
+        const monitor = this.monitoringOperations.startMonitoring(server.serverId);
+        
+        sessionLogger.info('RebootScheduler', `[${server.name}] Monitoring startup with real-time data...`);
         
         while (Date.now() - startTime < timeout) {
             try {
-                const status = await pterodactyl.getStatus(server.serverId);
+                const stats = monitor.getStats();
                 
-                if (status.attributes.current_state === 'running') {
+                if (stats.state === 'running') {
                     // Server is running, consider it successful
+                    sessionLogger.info('RebootScheduler', `[${server.name}] Server startup confirmed via websocket`);
                     return true;
                 }
                 
-                // Wait 30 seconds before next check
-                await functions.sleep(30000);
+                // Log current state for debugging
+                sessionLogger.debug('RebootScheduler', `[${server.name}] Current state: ${stats.state}`);
+                
+                // Wait before next check
+                await functions.sleep(checkInterval);
                 
             } catch (error) {
-                sessionLogger.error('RebootScheduler', `Error checking status for ${server.name}:`, error.message);
+                sessionLogger.error('RebootScheduler', `Error checking real-time status for ${server.name}:`, error.message);
+                await functions.sleep(checkInterval);
             }
         }
         
+        sessionLogger.warn('RebootScheduler', `[${server.name}] Startup monitoring timeout reached`);
         return false; // Timeout reached
     },
 
@@ -1219,6 +1321,9 @@ module.exports = {
             this.state.completedServers.clear();
             this.state.apiCallCount = 0;
             
+            // Clean up all websocket monitoring connections
+            this.monitoringOperations.cleanupAllMonitoring();
+            
             // Reset today stats
             this.state.todayStats = {
                 lowestPlayerCount: null,
@@ -1245,6 +1350,7 @@ module.exports = {
                 completedServers: new Set(),
                 apiCallCount: 0,
                 lastApiCall: 0,
+                serverMonitors: new Map(),
                 todayStats: {
                     lowestPlayerCount: null,
                     lowestPlayerTime: null,
