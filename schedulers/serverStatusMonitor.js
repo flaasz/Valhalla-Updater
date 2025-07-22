@@ -177,7 +177,7 @@ function generateServerEmbed(serverList, shardList) {
         let str = "";
 
         for (let s of versionObj[key]) {
-            var statusEmoji = "<:d_:1389899743286530110>";
+            var statusEmoji = "<:c:1389899748370157609>";
 
             // Check if server is online
             const isOnline = shardList.some(obj => obj.name === s.name);
