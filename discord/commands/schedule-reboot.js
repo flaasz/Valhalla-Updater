@@ -172,30 +172,70 @@ module.exports = {
             return;
         }
         
+        // Store the channel ID for later webhook notification
+        const channelId = interaction.channelId;
+        const userId = interaction.user.id;
+        const username = interaction.user.username;
+        
         // Trigger manual reboot
         const rebootScheduler = require('../../schedulers/rebootScheduler');
         
         try {
-            await rebootScheduler.triggerRebootSequence(
-                `Manual trigger by ${interaction.user.username} (${interaction.user.id})`,
-                0, // Player count not relevant for manual trigger
-                rebootScheduler.runtimeConfig || rebootScheduler.defaultConfig
-            );
-            
+            // First, respond to the interaction immediately
             const embed = new EmbedBuilder()
                 .setColor(0xffa500)
                 .setTitle('🚨 Manual Reboot Triggered')
-                .setDescription('Reboot sequence has been started manually. Check staff channel for progress updates.')
+                .setDescription('Reboot sequence is being started manually. Check staff channel for progress updates.')
                 .addFields(
-                    { name: 'Triggered By', value: interaction.user.username, inline: true },
+                    { name: 'Triggered By', value: username, inline: true },
                     { name: 'Time', value: timeManager.getCurrentTimeGMT3().toISOString(), inline: true }
                 )
                 .setTimestamp();
             
             await interaction.editReply({ embeds: [embed] });
             
+            // Store the reboot info in the database for tracking
+            await mongo.storeRebootRequest({
+                channelId,
+                userId,
+                username,
+                timestamp: new Date().toISOString(),
+                completed: false
+            });
+            
+            // Then trigger the reboot sequence
+            await rebootScheduler.triggerRebootSequence(
+                `Manual trigger by ${username} (${userId})`,
+                0, // Player count not relevant for manual trigger
+                rebootScheduler.runtimeConfig || rebootScheduler.defaultConfig
+            );
+            
+            // The completion notification will be handled by the rebootScheduler's sendRebootNotification method
+            
         } catch (error) {
             sessionLogger.error('ScheduleRebootCommand', 'Error forcing reboot', error.message);
+            
+            // Try to notify via webhook since the interaction token might have expired
+            try {
+                const webhook = require('../../discord/webhook');
+                await webhook.sendWebhook(channelId, {
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor(0xff0000)
+                            .setTitle('❌ Reboot Sequence Failed')
+                            .setDescription(`Failed to complete the reboot sequence: ${error.message}`)
+                            .addFields(
+                                { name: 'Triggered By', value: username, inline: true },
+                                { name: 'Time', value: new Date().toISOString(), inline: true }
+                            )
+                            .setTimestamp()
+                    ]
+                });
+            } catch (webhookError) {
+                sessionLogger.error('ScheduleRebootCommand', 'Failed to send webhook notification', webhookError.message);
+            }
+            
+            // Also try the original reply, but don't worry if it fails
             await safeEditReply(interaction, '❌ Failed to trigger reboot sequence.');
         }
     },

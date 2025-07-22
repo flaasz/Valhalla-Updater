@@ -105,8 +105,8 @@ module.exports = {
          */
         stopMonitoring(serverId) {
             const monitor = module.exports.state.serverMonitors.get(serverId);
-            if (monitor && monitor.socket) {
-                monitor.socket.disconnect();
+            if (monitor) {
+                monitor.disconnect(); // Use the new method instead of directly accessing socket
             }
             module.exports.state.serverMonitors.delete(serverId);
             sessionLogger.debug('RebootScheduler', `Stopped monitoring for server ${serverId}`);
@@ -127,8 +127,8 @@ module.exports = {
          */
         cleanupAllMonitoring() {
             for (const [serverId, monitor] of module.exports.state.serverMonitors) {
-                if (monitor && monitor.socket) {
-                    monitor.socket.disconnect();
+                if (monitor) {
+                    monitor.disconnect(); // Use the new method instead of directly accessing socket
                 }
             }
             module.exports.state.serverMonitors.clear();
@@ -1425,7 +1425,7 @@ module.exports = {
                     .setTimestamp();
                     
             } else if (type === 'complete') {
-                const retryDetails = Object.keys(data.retryAttempts).length > 0 
+                const retryDetails = Object.keys(data.retryAttempts).length > 0
                     ? Object.entries(data.retryAttempts).map(([id, attempts]) => `${id}: ${attempts} attempts`).join('\n')
                     : 'None';
                 
@@ -1439,6 +1439,48 @@ module.exports = {
                         { name: 'Retry Details', value: retryDetails, inline: false }
                     )
                     .setTimestamp();
+                
+                // Update any pending reboot requests
+                try {
+                    const mongo = require('../modules/mongo');
+                    const webhook = require('../discord/webhook');
+                    
+                    // Get recent reboot requests that are not completed
+                    const rebootRequests = await mongo.getRecentRebootRequests();
+                    
+                    // Update each request and send notification to the original channel
+                    for (const request of rebootRequests) {
+                        // Update the request status
+                        await mongo.updateRebootRequest(
+                            request.userId,
+                            true,
+                            `Completed with ${data.successCount} successful and ${data.failureCount} failed reboots`
+                        );
+                        
+                        // Send notification to the original channel
+                        try {
+                            await webhook.sendWebhook(request.channelId, {
+                                embeds: [
+                                    new EmbedBuilder()
+                                        .setColor(data.failureCount > 0 ? 0xffa500 : 0x00ff00)
+                                        .setTitle('✅ Reboot Sequence Completed')
+                                        .setDescription(`The reboot sequence you requested has completed.`)
+                                        .addFields(
+                                            { name: 'Successful Reboots', value: data.successCount.toString(), inline: true },
+                                            { name: 'Failed Reboots', value: data.failureCount.toString(), inline: true },
+                                            { name: 'Total Duration', value: data.totalTime, inline: true }
+                                        )
+                                        .setFooter({ text: `Requested by ${request.username}` })
+                                        .setTimestamp()
+                                ]
+                            });
+                        } catch (webhookError) {
+                            sessionLogger.error('RebootScheduler', `Failed to send completion webhook to channel ${request.channelId}:`, webhookError.message);
+                        }
+                    }
+                } catch (dbError) {
+                    sessionLogger.error('RebootScheduler', 'Error updating reboot requests:', dbError.message);
+                }
             }
             
             if (embed) {
