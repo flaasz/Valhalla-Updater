@@ -660,4 +660,80 @@ module.exports = {
         return result;
     },
 
+    /**
+     * Stores a reboot request for tracking
+     * @param {object} requestData Reboot request data
+     * @returns {object} Inserted document with _id
+     */
+    storeRebootRequest: async function (requestData) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const result = await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_requests')
+            .insertOne({
+                ...requestData,
+                completed: false,
+                createdAt: new Date()
+            });
+
+        return result;
+    },
+
+    /**
+     * Updates a reboot request status
+     * @param {string} userId User ID who initiated the request
+     * @param {boolean} completed Whether the reboot was completed
+     * @param {string} status Optional status message
+     */
+    updateRebootRequest: async function (userId, completed, status = null) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        // Find the most recent request by this user
+        const updateData = {
+            completed,
+            completedAt: new Date()
+        };
+        
+        if (status) {
+            updateData.status = status;
+        }
+        
+        await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_requests')
+            .updateOne(
+                { userId: userId, completed: false },
+                { $set: updateData },
+                { sort: { createdAt: -1 } }
+            );
+    },
+    
+    /**
+     * Gets recent reboot requests that are not completed
+     * @param {number} limit Maximum number of requests to return (default: 5)
+     * @returns {Array} Array of reboot requests
+     */
+    getRecentRebootRequests: async function (limit = 5) {
+        if (!mainClientConnected) {
+            await mongoClient.connect();
+            mainClientConnected = true;
+        }
+        
+        const requests = await mongoClient
+            .db(mongoDBName)
+            .collection('reboot_requests')
+            .find({ completed: false })
+            .sort({ createdAt: -1 })
+            .limit(limit)
+            .toArray();
+            
+        return requests;
+    }
 };
