@@ -31,7 +31,11 @@ class EnhancedCrashReporter {
 
     formatTimestamp() {
         const now = new Date();
-        return now.toISOString().replace(/:/g, '-').split('.')[0];
+        // Include milliseconds for uniqueness: 2025-07-23T10-30-45-123
+        const isoString = now.toISOString();
+        const [datePart, timePart] = isoString.split('.');
+        const milliseconds = timePart.substring(0, 3); // Extract first 3 digits of milliseconds
+        return datePart.replace(/:/g, '-') + '-' + milliseconds;
     }
 
     tryGetServiceStatus() {
@@ -247,7 +251,26 @@ PID: ${process.pid}
                 fs.mkdirSync(location, { recursive: true });
             }
             
-            const fullPath = path.join(location, filename);
+            let finalFilename = filename;
+            let fullPath = path.join(location, finalFilename);
+            let counter = 2;
+            
+            // Handle filename collisions (fallback safety)
+            while (fs.existsSync(fullPath)) {
+                const nameWithoutExt = path.parse(filename).name;
+                const extension = path.parse(filename).ext;
+                finalFilename = `${nameWithoutExt}_${counter}${extension}`;
+                fullPath = path.join(location, finalFilename);
+                counter++;
+                
+                // Prevent infinite loops
+                if (counter > 100) {
+                    finalFilename = `${nameWithoutExt}_${Date.now()}${extension}`;
+                    fullPath = path.join(location, finalFilename);
+                    break;
+                }
+            }
+            
             fs.writeFileSync(fullPath, data);
             return fullPath;
         } catch (err) {

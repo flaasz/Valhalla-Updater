@@ -28,21 +28,47 @@ const client = new Client({
 
 module.exports = {
     launchBot: async function () {
-        try {
-            sessionLogger.info('DiscordBot', 'Initializing Discord bot...');
-            
-            commands.loadCommandFiles(client);
-            sessionLogger.info('DiscordBot', 'Command files loaded');
-            
-            events.loadEventFiles(client);
-            sessionLogger.info('DiscordBot', 'Event files loaded');
+        const maxRetries = 5;
+        const baseDelay = 5000; // 5 seconds
+        
+        for (let attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                sessionLogger.info('DiscordBot', `Initializing Discord bot... (Attempt ${attempt}/${maxRetries})`);
+                
+                commands.loadCommandFiles(client);
+                sessionLogger.info('DiscordBot', 'Command files loaded');
+                
+                events.loadEventFiles(client);
+                sessionLogger.info('DiscordBot', 'Event files loaded');
 
-            sessionLogger.info('DiscordBot', 'Connecting to Discord...');
-            await client.login(token);
-            sessionLogger.info('DiscordBot', 'Successfully connected to Discord');
-        } catch (error) {
-            sessionLogger.error('DiscordBot', 'Failed to launch bot', error.message);
-            throw error;
+                sessionLogger.info('DiscordBot', 'Connecting to Discord...');
+                await client.login(token);
+                sessionLogger.info('DiscordBot', 'Successfully connected to Discord');
+                return; // Success - exit retry loop
+                
+            } catch (error) {
+                const isServiceUnavailable = error.message.includes('Service Unavailable') || 
+                                           error.code === 50035 || 
+                                           error.status === 503;
+                
+                if (isServiceUnavailable && attempt < maxRetries) {
+                    const delay = baseDelay * Math.pow(2, attempt - 1); // Exponential backoff
+                    sessionLogger.warn('DiscordBot', `Discord API unavailable (attempt ${attempt}/${maxRetries}). Retrying in ${delay/1000}s...`);
+                    
+                    // Wait before retry
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    continue;
+                } else {
+                    sessionLogger.error('DiscordBot', `Failed to launch bot after ${attempt} attempts:`, error.message);
+                    
+                    if (attempt === maxRetries) {
+                        sessionLogger.error('DiscordBot', 'Max retries exceeded. Bot will continue without Discord connection.');
+                        // Don't throw - let the application continue running
+                        return;
+                    }
+                    throw error;
+                }
+            }
         }
     },
 

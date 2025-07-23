@@ -82,17 +82,22 @@ module.exports = {
             // Trim any trailing spaces
             let serverName = server.name.trim();
             
-            // If name is still too long, truncate and add ellipsis
-            if (serverName.length > 22) {
-                serverName = serverName.substring(0, 22) + "...";
+            // If name is too long, truncate to stay under Discord's 25-character limit
+            if (serverName.length > 20) {
+                serverName = serverName.substring(0, 20) + "..."; // 20 + 3 = 23 chars (safely under 25)
             }
             
             choices.push(serverName);
         }
 
-        const filtered = choices.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase()));
+        // Filter choices to show matches as user types (more flexible than just startsWith)
+        const filtered = choices.filter(choice => 
+            choice.toLowerCase().includes(focusedValue.toLowerCase())
+        );
+        // Discord has a maximum of 25 autocomplete choices
+        const limitedChoices = filtered.slice(0, 25);
         await interaction.respond(
-            filtered.map(choice => ({
+            limitedChoices.map(choice => ({
                 name: choice,
                 value: choice
             })),
