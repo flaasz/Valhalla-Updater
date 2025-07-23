@@ -104,10 +104,6 @@ module.exports = {
          * @param {string} serverId Server ID
          */
         stopMonitoring(serverId) {
-            const monitor = module.exports.state.serverMonitors.get(serverId);
-            if (monitor) {
-                monitor.disconnect(); // Use the new method instead of directly accessing socket
-            }
             module.exports.state.serverMonitors.delete(serverId);
             sessionLogger.debug('RebootScheduler', `Stopped monitoring for server ${serverId}`);
         },
@@ -126,11 +122,6 @@ module.exports = {
          * Clean up all monitoring connections
          */
         cleanupAllMonitoring() {
-            for (const [serverId, monitor] of module.exports.state.serverMonitors) {
-                if (monitor) {
-                    monitor.disconnect(); // Use the new method instead of directly accessing socket
-                }
-            }
             module.exports.state.serverMonitors.clear();
             sessionLogger.info('RebootScheduler', 'Cleaned up all server monitoring connections');
         }
