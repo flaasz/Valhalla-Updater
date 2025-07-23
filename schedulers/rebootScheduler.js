@@ -5,7 +5,6 @@ const timeManager = require("../modules/timeManager");
 const functions = require("../modules/functions");
 const { EmbedBuilder } = require("discord.js");
 const sessionLogger = require("../modules/sessionLogger");
-const PteroStats = require("../modules/pteroStats");
 
 module.exports = {
     name: 'rebootScheduler',
@@ -34,7 +33,6 @@ module.exports = {
         completedServers: new Set(), // NEW: Track completed servers
         apiCallCount: 0, // NEW: Track API calls
         lastApiCall: 0, // NEW: Rate limiting
-        serverMonitors: new Map(), // NEW: serverId -> PteroStats instance for real-time monitoring
         todayStats: {
             lowestPlayerCount: null,
             lowestPlayerTime: null,
@@ -79,53 +77,6 @@ module.exports = {
         }
     },
 
-    // NEW: Real-time monitoring operations
-    monitoringOperations: {
-        /**
-         * Start real-time monitoring for a server
-         * @param {string} serverId Server ID
-         * @returns {PteroStats} PteroStats instance
-         */
-        startMonitoring(serverId) {
-            if (module.exports.state.serverMonitors.has(serverId)) {
-                return module.exports.state.serverMonitors.get(serverId);
-            }
-            
-            const monitor = new PteroStats();
-            monitor.start(serverId);
-            module.exports.state.serverMonitors.set(serverId, monitor);
-            
-            sessionLogger.debug('RebootScheduler', `Started real-time monitoring for server ${serverId}`);
-            return monitor;
-        },
-
-        /**
-         * Stop monitoring for a server
-         * @param {string} serverId Server ID
-         */
-        stopMonitoring(serverId) {
-            module.exports.state.serverMonitors.delete(serverId);
-            sessionLogger.debug('RebootScheduler', `Stopped monitoring for server ${serverId}`);
-        },
-
-        /**
-         * Get real-time stats for a server
-         * @param {string} serverId Server ID
-         * @returns {Object|null} Server stats or null if not monitored
-         */
-        getRealtimeStats(serverId) {
-            const monitor = module.exports.state.serverMonitors.get(serverId);
-            return monitor ? monitor.getStats() : null;
-        },
-
-        /**
-         * Clean up all monitoring connections
-         */
-        cleanupAllMonitoring() {
-            module.exports.state.serverMonitors.clear();
-            sessionLogger.info('RebootScheduler', 'Cleaned up all server monitoring connections');
-        }
-    },
 
 
     /**
@@ -213,7 +164,7 @@ module.exports = {
     },
 
     /**
-     * Update current player statistics
+     * Update current player statistics (with time window validation like original)
      */
     updatePlayerStats: async function () {
         try {
@@ -228,13 +179,15 @@ module.exports = {
             const currentTime = timeManager.getCurrentTimeGMT3();
             const timeWindow = timeManager.checkRebootWindow();
             
-            // Update lowest player count
-            if (this.state.todayStats.lowestPlayerCount === null || totalPlayers < this.state.todayStats.lowestPlayerCount) {
-                this.state.todayStats.lowestPlayerCount = totalPlayers;
-                this.state.todayStats.lowestPlayerTime = currentTime.toISOString();
-                
-                // Save to database
-                await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
+            // Update lowest player count only if in reboot window (original working logic)
+            if (timeWindow.isInWindow) {
+                if (this.state.todayStats.lowestPlayerCount === null || totalPlayers < this.state.todayStats.lowestPlayerCount) {
+                    this.state.todayStats.lowestPlayerCount = totalPlayers;
+                    this.state.todayStats.lowestPlayerTime = currentTime.toISOString();
+                    
+                    // Save to database
+                    await mongo.updateRebootHistory(timeManager.getTodayDateString(), this.state.todayStats);
+                }
             }
             
         } catch (error) {
@@ -243,10 +196,12 @@ module.exports = {
     },
 
     /**
-     * Check if reboot should be scheduled
+     * Check if reboot should be scheduled (with time window validation)
      */
     checkRebootSchedule: async function (options) {
         try {
+            // Check time window first (original working logic)
+            const timeWindow = timeManager.checkRebootWindow();
             const playersData = await velocityMetrics.getPlayers();
             
             let totalPlayers = 0;
@@ -260,13 +215,23 @@ module.exports = {
                 return;
             }
             
-            // Simple trigger logic: reboot if less than threshold players
+            // Enhanced trigger logic: both time window AND player count (original working approach)
             let shouldTrigger = false;
             let triggerReason = '';
             
-            if (totalPlayers < options.playerThreshold) {
+            // Only trigger during optimal reboot window (9:00-11:00 AM GMT+3) AND low player count
+            if (timeWindow.isInWindow && totalPlayers < options.playerThreshold) {
                 shouldTrigger = true;
-                triggerReason = `Low player count (${totalPlayers} < ${options.playerThreshold})`;
+                triggerReason = `Optimal time window + Low player count (${totalPlayers} < ${options.playerThreshold})`;
+            }
+            
+            // Log debug info about why we're not triggering
+            if (!timeWindow.isInWindow && totalPlayers < options.playerThreshold) {
+                sessionLogger.debug('RebootScheduler', 
+                    `Low player count (${totalPlayers}) but outside reboot window (${timeWindow.timeString})`);
+            } else if (timeWindow.isInWindow && totalPlayers >= options.playerThreshold) {
+                sessionLogger.debug('RebootScheduler', 
+                    `In reboot window (${timeWindow.timeString}) but too many players (${totalPlayers})`);
             }
             
             if (shouldTrigger) {
@@ -290,23 +255,10 @@ module.exports = {
         
         sessionLogger.info('RebootScheduler', `Checking uptime for ${servers.length} servers (minimum: ${minimumUptimeHours}h)...`);
         
-        // Check uptime for all servers using real-time websocket data
+        // Check uptime for all servers using simple REST API (original working approach)
         const uptimePromises = servers.map(async (server) => {
             try {
-                // Start real-time monitoring for this server
-                const monitor = this.monitoringOperations.startMonitoring(server.serverId);
-                
-                // Wait a moment for initial data to arrive
-                await functions.sleep(2000);
-                
-                const stats = monitor.getStats();
-                let uptimeHours = 0;
-                
-                if (stats.state === 'running' && stats.uptime > 0) {
-                    // uptime is in milliseconds, convert to hours
-                    uptimeHours = Math.floor(stats.uptime / (1000 * 3600));
-                }
-                
+                const uptimeHours = await pterodactyl.getServerUptime(server.serverId);
                 return { server, uptimeHours };
             } catch (error) {
                 sessionLogger.error('RebootScheduler', `Error checking uptime for ${server.name}:`, error.message);
@@ -779,8 +731,6 @@ module.exports = {
             sessionLogger.info('RebootScheduler', `[${server.name}] Reboot completed successfully`);
             this.stateOperations.markServerCompleted(server.serverId);
             
-            // Clean up monitoring for this server
-            this.monitoringOperations.stopMonitoring(server.serverId);
             
             if (!this.state.todayStats.successfulReboots) {
                 this.state.todayStats.successfulReboots = 0;
@@ -814,8 +764,6 @@ module.exports = {
             // Max retries reached
             this.stateOperations.markServerFailed(server.serverId);
             
-            // Clean up monitoring for failed server
-            this.monitoringOperations.stopMonitoring(server.serverId);
             
             if (!this.state.todayStats.failedReboots) {
                 this.state.todayStats.failedReboots = 0;
@@ -922,42 +870,34 @@ module.exports = {
     },
 
     /**
-     * Wait for server to reach specific state using real-time monitoring
+     * Wait for server to reach specific state using simple REST API (original working approach)
      */
     waitForServerState: async function (server, targetState, timeout) {
         const startTime = Date.now();
-        const checkInterval = 2000; // Check every 2 seconds (faster with websockets)
         
-        // Start real-time monitoring for this server
-        const monitor = this.monitoringOperations.startMonitoring(server.serverId);
-        
-        try {
-            while (Date.now() - startTime < timeout) {
-                try {
-                    const stats = monitor.getStats();
-                    
-                    if (stats.state === targetState) {
-                        sessionLogger.debug('RebootScheduler', 
-                            `[${server.name}] Reached target state: ${targetState}`);
-                        return true;
-                    }
-                    
-                    await functions.sleep(checkInterval);
-                    
-                } catch (error) {
-                    sessionLogger.warn('RebootScheduler', 
-                        `[${server.name}] Real-time status check error: ${error.message}`);
-                    await functions.sleep(checkInterval);
+        while (Date.now() - startTime < timeout) {
+            try {
+                const status = await pterodactyl.getStatus(server.serverId);
+                
+                if (status && status.attributes && status.attributes.current_state === targetState) {
+                    sessionLogger.info('RebootScheduler', 
+                        `[${server.name}] Reached target state: ${targetState}`);
+                    return true;
                 }
+                
+                // Wait 30 seconds before next check (original working interval)
+                await functions.sleep(30000);
+                
+            } catch (error) {
+                sessionLogger.warn('RebootScheduler', 
+                    `[${server.name}] Status check error: ${error.message}`);
+                await functions.sleep(30000);
             }
-            
-            sessionLogger.warn('RebootScheduler', 
-                `[${server.name}] Timeout waiting for state: ${targetState}`);
-            return false;
-        } finally {
-            // Keep monitoring active during reboot process - don't stop here
-            // Monitoring will be cleaned up in executeFullServerReboot completion
         }
+        
+        sessionLogger.error('RebootScheduler', 
+            `[${server.name}] TIMEOUT waiting for state: ${targetState} after ${timeout/1000}s`);
+        return false;
     },
 
     /**
@@ -1055,43 +995,36 @@ module.exports = {
     },
 
     /**
-     * Monitor server startup with real-time websocket data
+     * Monitor server startup with simple REST API (original working approach)
      * @param {object} server Server object
      * @returns {boolean} Success status
      */
     monitorServerStartup: async function (server) {
         const timeout = 20 * 60 * 1000; // 20 minutes
         const startTime = Date.now();
-        const checkInterval = 5000; // Check every 5 seconds (faster with websockets)
         
-        // Use existing monitoring or start new one
-        const monitor = this.monitoringOperations.startMonitoring(server.serverId);
-        
-        sessionLogger.info('RebootScheduler', `[${server.name}] Monitoring startup with real-time data...`);
+        sessionLogger.info('RebootScheduler', `[${server.name}] Monitoring startup...`);
         
         while (Date.now() - startTime < timeout) {
             try {
-                const stats = monitor.getStats();
+                const status = await pterodactyl.getStatus(server.serverId);
                 
-                if (stats.state === 'running') {
+                if (status.attributes.current_state === 'running') {
                     // Server is running, consider it successful
-                    sessionLogger.info('RebootScheduler', `[${server.name}] Server startup confirmed via websocket`);
+                    sessionLogger.info('RebootScheduler', `[${server.name}] Server startup confirmed`);
                     return true;
                 }
                 
-                // Log current state for debugging
-                sessionLogger.debug('RebootScheduler', `[${server.name}] Current state: ${stats.state}`);
-                
-                // Wait before next check
-                await functions.sleep(checkInterval);
+                // Wait 30 seconds before next check (original working interval)
+                await functions.sleep(30000);
                 
             } catch (error) {
-                sessionLogger.error('RebootScheduler', `Error checking real-time status for ${server.name}:`, error.message);
-                await functions.sleep(checkInterval);
+                sessionLogger.error('RebootScheduler', `Error checking status for ${server.name}:`, error.message);
+                await functions.sleep(30000);
             }
         }
         
-        sessionLogger.warn('RebootScheduler', `[${server.name}] Startup monitoring timeout reached`);
+        sessionLogger.error('RebootScheduler', `[${server.name}] Startup monitoring TIMEOUT after 20 minutes`);
         return false; // Timeout reached
     },
 
@@ -1312,8 +1245,6 @@ module.exports = {
             this.state.completedServers.clear();
             this.state.apiCallCount = 0;
             
-            // Clean up all websocket monitoring connections
-            this.monitoringOperations.cleanupAllMonitoring();
             
             // Reset today stats
             this.state.todayStats = {
@@ -1341,7 +1272,6 @@ module.exports = {
                 completedServers: new Set(),
                 apiCallCount: 0,
                 lastApiCall: 0,
-                serverMonitors: new Map(),
                 todayStats: {
                     lowestPlayerCount: null,
                     lowestPlayerTime: null,
