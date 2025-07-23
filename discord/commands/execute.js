@@ -90,7 +90,10 @@ module.exports = {
             choices.push(serverName);
         }
 
-        const filtered = choices.filter(choice => choice.toLowerCase().startsWith(focusedValue.toLowerCase()));
+        // Filter choices to show matches as user types (more flexible than just startsWith)
+        const filtered = choices.filter(choice => 
+            choice.toLowerCase().includes(focusedValue.toLowerCase())
+        );
         // Discord has a maximum of 25 autocomplete choices
         const limitedChoices = filtered.slice(0, 25);
         await interaction.respond(
