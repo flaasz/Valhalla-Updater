@@ -19,13 +19,24 @@ const discord = require("./discord/bot");
 
 sessionLogger.info('Server', 'Valhalla Updater initializing...');
 
-sessionLogger.info('Server', 'Starting Discord bot...');
-discord.launchBot();
+// Start all services concurrently
+(async () => {
+    try {
+        sessionLogger.info('Server', 'Starting Discord bot...');
+        const discordPromise = discord.launchBot();
 
-sessionLogger.info('Server', 'Starting API server...');
-api.startServer();
+        sessionLogger.info('Server', 'Starting API server...');
+        api.startServer();
 
-sessionLogger.info('Server', 'Loading schedulers...');
-scheduler.loadSchedulers();
+        sessionLogger.info('Server', 'Loading schedulers...');
+        scheduler.loadSchedulers();
 
-sessionLogger.info('Server', 'All services started successfully!');
+        // Wait for Discord bot (with retry logic)
+        await discordPromise;
+
+        sessionLogger.info('Server', 'All services started successfully!');
+    } catch (error) {
+        sessionLogger.error('Server', 'Failed to start some services:', error.message);
+        // Continue running even if Discord fails
+    }
+})();

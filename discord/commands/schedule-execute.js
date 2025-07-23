@@ -68,11 +68,17 @@ module.exports = {
 
             for (const server of serverList) {
                 if (!server.excludeFromServerList) {
-                    choices.push(server.name.trim());
+                    // Trim and ensure server name doesn't exceed Discord's 25-character limit
+                    let serverName = server.name.trim();
+                    if (serverName.length > 20) {
+                        serverName = serverName.substring(0, 20) + "..."; // 20 + 3 = 23 chars (safely under 25)
+                    }
+                    choices.push(serverName);
                 }
             }
 
             const filtered = choices.filter(choice => choice.toLowerCase().includes(focusedValue.toLowerCase()));
+            // Discord has a maximum of 25 autocomplete choices - already limited but adding comment for clarity
             await interaction.respond(
                 filtered.slice(0, 25).map(choice => ({
                     name: choice,
@@ -138,7 +144,21 @@ module.exports = {
             const serversToExecute = [];
             
             for (const serverName of serverNames) {
-                const server = allServers.find(s => s.name === serverName);
+                let server = allServers.find(s => 
+                    s.name.trim() === serverName.trim() ||
+                    s.name.trim().toLowerCase() === serverName.trim().toLowerCase() ||
+                    s.tag === serverName.toLowerCase()
+                );
+                
+                // If not found and name ends with "...", try matching by prefix (for truncated names)
+                if (!server && serverName.endsWith('...')) {
+                    const prefix = serverName.substring(0, serverName.length - 3);
+                    server = allServers.find(s =>
+                        s.name.trim().startsWith(prefix) ||
+                        (s.tag && s.tag.toLowerCase().startsWith(prefix.toLowerCase()))
+                    );
+                }
+                
                 if (server) {
                     serversToExecute.push(server);
                 }
@@ -212,11 +232,21 @@ module.exports = {
         } else {
             const serverNames = serversInput.split(',').map(s => s.trim());
             for (const serverName of serverNames) {
-                const server = allServers.find(s => 
+                let server = allServers.find(s => 
                     s.name.trim() === serverName.trim() ||
                     s.name.trim().toLowerCase() === serverName.trim().toLowerCase() ||
                     s.tag === serverName.toLowerCase()
                 );
+                
+                // If not found and name ends with "...", try matching by prefix (for truncated names)
+                if (!server && serverName.endsWith('...')) {
+                    const prefix = serverName.substring(0, serverName.length - 3);
+                    server = allServers.find(s =>
+                        s.name.trim().startsWith(prefix) ||
+                        (s.tag && s.tag.toLowerCase().startsWith(prefix.toLowerCase()))
+                    );
+                }
+                
                 if (server) {
                     serversToExecute.push(server);
                 }
@@ -307,11 +337,20 @@ module.exports = {
         
         // Find the server
         const allServers = await mongo.getServers();
-        const server = allServers.find(s => 
+        let server = allServers.find(s => 
             s.name.trim() === serverName.trim() ||
             s.name.trim().toLowerCase() === serverName.trim().toLowerCase() ||
             s.tag === serverName.toLowerCase()
         );
+        
+        // If not found and name ends with "...", try matching by prefix (for truncated names)
+        if (!server && serverName.endsWith('...')) {
+            const prefix = serverName.substring(0, serverName.length - 3);
+            server = allServers.find(s =>
+                s.name.trim().startsWith(prefix) ||
+                (s.tag && s.tag.toLowerCase().startsWith(prefix.toLowerCase()))
+            );
+        }
         
         if (!server) {
             await interaction.editReply('❌ Server not found!');
