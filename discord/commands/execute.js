@@ -61,7 +61,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('execute')
         .setDescription('Execute a command on the server!')
-        .setDefaultMemberPermissions(16)
+        .setDefaultMemberPermissions(1099511627776)
         .addStringOption(option =>
             option.setName('server')
             .setDescription('Name of the server to execute the command on')
