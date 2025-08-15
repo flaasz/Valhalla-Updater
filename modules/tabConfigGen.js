@@ -16,10 +16,13 @@ const {
 
 module.exports = {
     generateTabConfig: async function () {
-
         const serverList = await getServers();
+        const content = await this.generateTabConfigContent();
+        console.log(content);
+    },
 
-        //console.log(serverList);
+    generateTabConfigContent: async function () {
+        const serverList = await getServers();
 
         let tagResult = "";
         let nameResult = "";
@@ -27,20 +30,32 @@ module.exports = {
         let longestTag = getLongestTag(serverList);
 
         for (let i = 0; i < serverList.length-1; i++) {
-            //console.log(toSmallCaps(serverList[i].name));
             tagResult += `  tag${i}:\n    conditions:\n      - "%server%=${serverList[i].name}"\n    yes: "${padTags(serverList[i], longestTag)}"\n    no: "%condition:tag${i + 1}%"\n`;
             nameResult += `  smallCaps${i}:\n    conditions:\n      - "%server%=${serverList[i].name}"\n    yes: "${toSmallCaps(serverList[i].name)}"\n    no: "%condition:smallCaps${i + 1}%"\n`;
         }
         tagResult += `  tag${serverList.length-1}:\n    conditions:\n      - "%server%=${serverList[serverList.length-1].name}"\n    yes: "${padTags(serverList[serverList.length-1], longestTag)}"\n    no: "[???]"\n`;
         nameResult += `  smallCaps${serverList.length-1}:\n    conditions:\n      - "%server%=${serverList[serverList.length-1].name}"\n    yes: "${toSmallCaps(serverList[serverList.length-1].name)}"\n    no: "???"\n`;
 
-        console.log(tagResult + nameResult);
+        return tagResult + nameResult;
+    },
 
-
+    generateServerHash: async function () {
+        const crypto = require('crypto');
+        const serverList = await getServers();
+        
+        // Create a consistent hash of server data that affects tab config
+        const serverData = serverList.map(server => ({
+            name: server.name,
+            tag: server.tag,
+            color: server.color
+        })).sort((a, b) => a.name.localeCompare(b.name)); // Sort for consistency
+        
+        const dataString = JSON.stringify(serverData);
+        return crypto.createHash('sha256').update(dataString).digest('hex');
     }
 };
 
-module.exports.generateTabConfig();
+// module.exports.generateTabConfig();
 /*
 
   serverName:
