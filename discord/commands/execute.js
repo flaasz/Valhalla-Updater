@@ -124,7 +124,7 @@ module.exports = {
             // Handle truncated server names in the query
             // First try exact match, then try matching the beginning of the name
             let server = serverList.find(server =>
-                server.name === query ||
+                server.name.trim() === query.trim() ||
                 server.tag === query.toLowerCase()
             );
             
